@@ -1,0 +1,6 @@
+/* Minimal host styles — actual Spotlight styles are in shadow DOM */
+#spotlight-extension-root {
+  all: initial;
+  position: fixed;
+  z-index: 2147483647;
+}

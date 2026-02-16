@@ -1,175 +1,174 @@
-import "https://deno.land/x/xhr@0.3.0/mod.ts";
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
-
-const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
-
-const SYSTEM_PROMPT = `You are Spotlight, an intelligent email assistant. Your job is to help users quickly find information, understand their emails, and stay on top of their inbox.
-
-## Your Capabilities
-- **Search & Find**: Locate specific emails, conversations, or information
-- **Summarize**: Provide concise summaries of emails or threads
-- **Extract**: Pull out action items, deadlines, dates, names, and key details
-- **Analyze**: Identify patterns, urgent items, and important messages
-- **Answer**: Respond to questions about email content accurately
-
-## Response Guidelines
-
-1. **Be concise but complete** - Users want quick answers, not essays. Use bullet points and bold for key info.
-
-2. **Structure your responses** - Use formatting to make answers scannable:
-   - **Bold** for names, dates, amounts, and key terms
-   - Bullet points for lists
-   - Keep paragraphs short (2-3 sentences max)
-
-3. **IMPORTANT - Separate multiple emails visually** - When listing multiple emails, ALWAYS add a horizontal rule (---) between each email entry. Example format:
-
-**From:** John Smith
-**Subject:** Meeting Tomorrow
-**Date:** Jan 10, 2026
-**Summary:** Reminder about 3pm meeting.
-
----
-
-**From:** Amazon
-**Subject:** Your order shipped
-**Date:** Jan 9, 2026
-**Summary:** Package arriving Tuesday.
-
----
-
-4. **Always cite sources** - When referencing an email, mention who it's from and when.
-
-5. **Be specific with dates/times** - Convert dates to relative terms when helpful:
-   - "Tomorrow at 3pm" instead of just the raw date
-   - "Last Tuesday" for recent dates
-
-6. **Prioritize relevance** - If multiple emails match, focus on the most recent/relevant ones first.
-
-7. **Handle uncertainty gracefully** - If you can't find something or aren't sure:
-   - "I couldn't find any emails about [topic] in your recent messages."
-   - "Based on the emails I can see, [answer], but there might be older emails I don't have access to."
-
-## Common Tasks
-
-**For "summarize my emails":**
-- Group by importance/urgency
-- Highlight action items
-- Note any deadlines
-
-**For "any emails from [person]":**
-- List their recent emails chronologically
-- Summarize the main topics
-- Note any pending items
-
-**For "what's due" or "deadlines":**
-- Extract ALL dates and deadlines mentioned
-- Sort by urgency
-- Include context for each
-
-**For specific searches:**
-- Be thorough - check subject, sender, AND body content
-- If nothing matches exactly, suggest related emails that might help
-
-Remember: Users are busy. Help them get the info they need fast.`;
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
+import { corsHeaders, handleCors, errorResponse } from "../_shared/cors.ts"
+import { getAuthenticatedUser, isErrorResponse } from "../_shared/auth.ts"
+import { adminDb } from "../_shared/db.ts"
+import { getGmailToken } from "../_shared/token.ts"
+import { getRecentEmails, searchEmails } from "../_shared/gmail.ts"
+import {
+  SYSTEM_PROMPT,
+  streamChatCompletion,
+  buildEmailContext,
+  parseUserIntent,
+} from "../_shared/openai.ts"
 
 serve(async (req) => {
-  // Handle CORS preflight requests
-  if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
-  }
+  const corsResponse = handleCors(req)
+  if (corsResponse) return corsResponse
 
   try {
-    const { message, emails } = await req.json();
+    const auth = await getAuthenticatedUser(req)
+    if (isErrorResponse(auth)) return auth
 
-    if (!message) {
-      return new Response(
-        JSON.stringify({ error: "Message is required" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+    const { conversation_id, message } = await req.json()
+
+    if (!message || typeof message !== "string") {
+      return errorResponse("Message is required", 400)
     }
 
-    if (!OPENAI_API_KEY) {
-      return new Response(
-        JSON.stringify({ error: "OpenAI API key not configured" }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+    // 1. Load or create conversation
+    let convId = conversation_id
+    if (!convId) {
+      const { data, error } = await adminDb
+        .from("conversations")
+        .insert({ user_id: auth.userId, title: message.substring(0, 80) })
+        .select("id")
+        .single()
+
+      if (error) return errorResponse("Failed to create conversation")
+      convId = data.id
+    } else {
+      // Verify ownership
+      const { data } = await adminDb
+        .from("conversations")
+        .select("id")
+        .eq("id", convId)
+        .eq("user_id", auth.userId)
+        .single()
+
+      if (!data) return errorResponse("Conversation not found", 404)
     }
 
-    // Build context from emails if provided
-    let emailContext = "";
-    if (emails && emails.length > 0) {
-      const today = new Date().toLocaleDateString('en-US', {
-        weekday: 'long',
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric'
-      });
+    // 2. Store user message
+    await adminDb.from("messages").insert({
+      conversation_id: convId,
+      role: "user",
+      content: message,
+    })
 
-      emailContext = `\n\n---\n**Today's Date:** ${today}\n**Number of emails provided:** ${emails.length}\n\n## User's Emails\n\n`;
+    // 3. Load conversation history
+    const { data: historyRows } = await adminDb
+      .from("messages")
+      .select("role, content")
+      .eq("conversation_id", convId)
+      .order("created_at", { ascending: true })
+      .limit(20)
 
-      emails.forEach((email: { from: string; subject: string; date: string; snippet: string; body?: string }, i: number) => {
-        // Clean up the from field to extract just the name/email
-        const fromClean = email.from?.replace(/<[^>]+>/g, '').trim() || 'Unknown sender';
+    const history = (historyRows || []).map((m) => ({
+      role: m.role as "user" | "assistant",
+      content: m.content as string,
+    }))
 
-        // Truncate body if too long to save tokens
-        let content = email.body || email.snippet || '';
-        if (content.length > 1500) {
-          content = content.substring(0, 1500) + '... [truncated]';
+    // 4. Parse intent — what emails to fetch?
+    const intent = await parseUserIntent(message, history)
+
+    // 5. Fetch emails if needed
+    let emailContext = ""
+    if (intent.action !== "none") {
+      try {
+        const accessToken = await getGmailToken(auth.userId)
+        let emails
+
+        if (intent.action === "search" && intent.query) {
+          emails = await searchEmails(
+            accessToken,
+            intent.query,
+            intent.maxResults ?? 20
+          )
+        } else {
+          emails = await getRecentEmails(
+            accessToken,
+            intent.maxResults ?? 50
+          )
         }
 
-        emailContext += `### Email ${i + 1}\n`;
-        emailContext += `- **From:** ${fromClean}\n`;
-        emailContext += `- **Subject:** ${email.subject || '(no subject)'}\n`;
-        emailContext += `- **Date:** ${email.date}\n`;
-        emailContext += `- **Content:**\n${content}\n\n`;
-      });
-
-      emailContext += `---\n`;
+        emailContext = buildEmailContext(emails.slice(0, 25))
+      } catch (err) {
+        console.error("Email fetch error:", err)
+        // Continue without emails — AI will mention it can't access inbox
+      }
     }
 
-    const response = await fetch("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${OPENAI_API_KEY}`,
-        "Content-Type": "application/json",
+    // 6. Build messages for AI
+    const aiMessages = [
+      { role: "system" as const, content: SYSTEM_PROMPT + emailContext },
+      ...history.slice(-10),
+    ]
+
+    // 7. Stream response via SSE
+    const encoder = new TextEncoder()
+    const stream = new ReadableStream({
+      async start(controller) {
+        try {
+          const fullContent = await streamChatCompletion(
+            aiMessages,
+            (chunk) => {
+              const event = JSON.stringify({ type: "chunk", content: chunk })
+              controller.enqueue(
+                encoder.encode(`data: ${event}\n\n`)
+              )
+            }
+          )
+
+          // 8. Store assistant response
+          const { data: savedMsg } = await adminDb
+            .from("messages")
+            .insert({
+              conversation_id: convId,
+              role: "assistant",
+              content: fullContent,
+            })
+            .select("id")
+            .single()
+
+          // Update conversation timestamp
+          await adminDb
+            .from("conversations")
+            .update({ updated_at: new Date().toISOString() })
+            .eq("id", convId)
+
+          // Send done event
+          const doneEvent = JSON.stringify({
+            type: "done",
+            conversation_id: convId,
+            message_id: savedMsg?.id,
+          })
+          controller.enqueue(encoder.encode(`data: ${doneEvent}\n\n`))
+          controller.close()
+        } catch (err) {
+          console.error("Stream error:", err)
+          const errEvent = JSON.stringify({
+            type: "error",
+            content:
+              err instanceof Error ? err.message : "Something went wrong",
+          })
+          controller.enqueue(encoder.encode(`data: ${errEvent}\n\n`))
+          controller.close()
+        }
       },
-      body: JSON.stringify({
-        model: "gpt-3.5-turbo",
-        messages: [
-          { role: "system", content: SYSTEM_PROMPT + emailContext },
-          { role: "user", content: message },
-        ],
-        max_tokens: 1500,
-        temperature: 0.5,
-      }),
-    });
+    })
 
-    if (!response.ok) {
-      const error = await response.text();
-      console.error("OpenAI API error:", error);
-      return new Response(
-        JSON.stringify({ error: "Failed to get AI response" }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
-    const data = await response.json();
-    const aiResponse = data.choices[0]?.message?.content || "Sorry, I couldn't generate a response.";
-
-    return new Response(
-      JSON.stringify({ response: aiResponse }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
+    return new Response(stream, {
+      headers: {
+        ...corsHeaders,
+        "Content-Type": "text/event-stream",
+        "Cache-Control": "no-cache",
+        Connection: "keep-alive",
+      },
+    })
   } catch (error) {
-    console.error("Error:", error);
-    return new Response(
-      JSON.stringify({ error: "Internal server error" }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
+    console.error("Chat error:", error)
+    return errorResponse(
+      error instanceof Error ? error.message : "Internal server error"
+    )
   }
-});
+})
