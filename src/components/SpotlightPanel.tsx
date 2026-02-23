@@ -6,6 +6,7 @@ import { WelcomeView } from './views/WelcomeView'
 import { AuthView } from './views/AuthView'
 import { OnboardingView } from './views/OnboardingView'
 import { ChatView } from './views/ChatView'
+import { HistoryView } from './views/HistoryView'
 import { SettingsView } from './views/SettingsView'
 import { AccountView } from './views/AccountView'
 import { LegalView } from './views/LegalView'
@@ -31,6 +32,8 @@ export function SpotlightPanel() {
         return <OnboardingView />
       case 'chat':
         return <ChatView />
+      case 'history':
+        return <HistoryView />
       case 'settings':
         return <SettingsView />
       case 'account':

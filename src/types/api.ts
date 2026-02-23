@@ -14,7 +14,12 @@ export interface SSEDoneEvent {
   message_id: string
 }
 
-export type SSEEvent = SSEChunkEvent | SSEDoneEvent
+export interface SSEErrorEvent {
+  type: 'error'
+  content: string
+}
+
+export type SSEEvent = SSEChunkEvent | SSEDoneEvent | SSEErrorEvent
 
 export interface StoreTokensRequest {
   provider_token: string
@@ -25,6 +30,24 @@ export interface SettingsResponse {
   dark_mode: boolean
   notifications_enabled: boolean
   ai_model: string
+  ai_personality: string
+  sms_phone_number: string
+  subscription_tier: string
+}
+
+export interface NotificationRule {
+  id: string
+  rule_type: 'from' | 'subject' | 'contains'
+  value: string
+  enabled: boolean
+  created_at: string
+}
+
+export interface UsageStatus {
+  used: number
+  limit: number
+  remaining: number
+  tier?: string
 }
 
 export interface ApiError {

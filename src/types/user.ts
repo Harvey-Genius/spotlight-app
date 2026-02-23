@@ -11,4 +11,5 @@ export interface UserSettings {
   dark_mode: boolean
   notifications_enabled: boolean
   ai_model: string
+  ai_personality: string
 }

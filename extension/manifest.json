@@ -3,26 +3,43 @@
   "name": "Spotlight Email Assistant",
   "version": "1.0.0",
   "description": "AI-powered email assistant that helps you search, summarize, and manage your Gmail inbox.",
-  "permissions": ["identity", "storage"],
+  "permissions": ["identity", "storage", "sidePanel", "tabs", "notifications", "alarms"],
+  "oauth2": {
+    "client_id": "698235805836-fdiopq0e75d3j74df54rn5g2phrfv4el.apps.googleusercontent.com",
+    "scopes": [
+      "openid",
+      "email",
+      "profile",
+      "https://www.googleapis.com/auth/gmail.readonly",
+      "https://www.googleapis.com/auth/gmail.send"
+    ]
+  },
   "action": {
-    "default_popup": "popup/popup.html",
     "default_title": "Open Spotlight"
+  },
+  "side_panel": {
+    "default_path": "popup/popup.html"
   },
   "background": {
     "service_worker": "background.js",
     "type": "module"
   },
-  "content_scripts": [
-    {
-      "matches": ["<all_urls>"],
-      "js": ["content.js"],
-      "css": ["styles/content.css"],
-      "run_at": "document_idle"
-    }
-  ],
   "content_security_policy": {
     "extension_pages": "script-src 'self'; object-src 'self'"
   },
+  "content_scripts": [
+    {
+      "matches": ["https://mail.google.com/*"],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": ["icons/sidebar-icon.png"],
+      "matches": ["https://mail.google.com/*"]
+    }
+  ],
   "icons": {
     "16": "icons/icon-16.png",
     "48": "icons/icon-48.png",

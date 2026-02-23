@@ -10,7 +10,7 @@ interface ChatState {
   streamingContent: string
 
   loadConversations: () => Promise<void>
-  selectConversation: (id: string) => void
+  selectConversation: (id: string) => Promise<void>
   newConversation: () => void
   deleteConversation: (id: string) => Promise<void>
   sendMessage: (content: string) => Promise<void>
@@ -42,9 +42,16 @@ export const useChatStore = create<ChatState>((set, get) => ({
     }
   },
 
-  selectConversation: (id) => {
-    set({ activeConversationId: id })
-    // TODO: Load messages for this conversation from backend
+  selectConversation: async (id) => {
+    set({ activeConversationId: id, messages: [WELCOME_MESSAGE] })
+    try {
+      const msgs = await api.getConversationMessages(id)
+      if (msgs.length > 0) {
+        set({ messages: msgs })
+      }
+    } catch (err) {
+      console.error('Failed to load conversation messages:', err)
+    }
   },
 
   newConversation: () => {
@@ -99,7 +106,10 @@ export const useChatStore = create<ChatState>((set, get) => ({
         activeConversationId,
         content
       )) {
-        if (event.type === 'chunk') {
+        if (event.type === 'error') {
+          console.error('Server error:', event.content)
+          throw new Error(event.content || 'Server error')
+        } else if (event.type === 'chunk') {
           fullContent += event.content
           set({ streamingContent: fullContent })
         } else if (event.type === 'done') {
@@ -142,11 +152,12 @@ export const useChatStore = create<ChatState>((set, get) => ({
       }
     } catch (err) {
       console.error('Chat error:', err)
+      const errMsg = err instanceof Error ? err.message : 'Unknown error'
       const errorMessage: ChatMessage = {
         id: `error-${Date.now()}`,
         conversation_id: activeConversationId || '',
         role: 'assistant',
-        content: 'Sorry, something went wrong. Please try again.',
+        content: `Sorry, something went wrong: ${errMsg}`,
         metadata: {},
         created_at: new Date().toISOString(),
       }

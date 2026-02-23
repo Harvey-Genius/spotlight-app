@@ -1,5 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
-import { corsHeaders, handleCors, errorResponse } from "../_shared/cors.ts"
+import { getCorsHeaders, handleCors, errorResponse } from "../_shared/cors.ts"
 import { getAuthenticatedUser, isErrorResponse } from "../_shared/auth.ts"
 import { adminDb } from "../_shared/db.ts"
 import { getGmailToken } from "../_shared/token.ts"
@@ -23,6 +23,38 @@ serve(async (req) => {
 
     if (!message || typeof message !== "string") {
       return errorResponse("Message is required", 400)
+    }
+    if (message.length > 5000) {
+      return errorResponse("Message too long (max 5,000 chars)", 400)
+    }
+
+    // 0. Check subscription tier and set daily limit
+    const FREE_LIMIT = 10
+    const PRO_LIMIT = 50
+    const { data: tierData } = await adminDb
+      .from("user_settings")
+      .select("subscription_tier")
+      .eq("user_id", auth.userId)
+      .single()
+
+    const isPro = tierData?.subscription_tier === "pro"
+    const DAILY_LIMIT = isPro ? PRO_LIMIT : FREE_LIMIT
+    const today = new Date().toISOString().split("T")[0]
+
+    const { data: countResult, error: usageErr } = await adminDb.rpc(
+      "increment_daily_usage",
+      { p_user_id: auth.userId, p_date: today, p_limit: DAILY_LIMIT, p_type: "chat" }
+    )
+
+    if (usageErr) {
+      console.error("Rate limit check failed:", usageErr.message)
+    } else if (countResult !== null && countResult > DAILY_LIMIT) {
+      return errorResponse(
+        isPro
+          ? `Daily limit reached (${PRO_LIMIT} messages). Resets at midnight UTC.`
+          : `Daily limit reached (${FREE_LIMIT} messages). Upgrade to Pro for ${PRO_LIMIT}/day!`,
+        429
+      )
     }
 
     // 1. Load or create conversation
@@ -68,43 +100,64 @@ serve(async (req) => {
       content: m.content as string,
     }))
 
-    // 4. Parse intent — what emails to fetch?
+    // 4. Parse intent — determines what emails to fetch
     const intent = await parseUserIntent(message, history)
 
-    // 5. Fetch emails if needed
+    // 5. Always fetch emails — never skip. If intent is "none", fetch recent as context.
     let emailContext = ""
-    if (intent.action !== "none") {
-      try {
-        const accessToken = await getGmailToken(auth.userId)
-        let emails
+    try {
+      const accessToken = await getGmailToken(auth.userId)
+      let emails
 
-        if (intent.action === "search" && intent.query) {
-          emails = await searchEmails(
-            accessToken,
-            intent.query,
-            intent.maxResults ?? 20
-          )
-        } else {
-          emails = await getRecentEmails(
-            accessToken,
-            intent.maxResults ?? 50
-          )
+      if (intent.action === "search" && intent.query) {
+        emails = await searchEmails(
+          accessToken,
+          intent.query,
+          intent.maxResults ?? 20
+        )
+        // If search returned few results, also fetch recent for broader context
+        if (emails.length < 5) {
+          const recent = await getRecentEmails(accessToken, 25)
+          const existingIds = new Set(emails.map((e) => e.id))
+          for (const r of recent) {
+            if (!existingIds.has(r.id)) emails.push(r)
+          }
         }
-
-        emailContext = buildEmailContext(emails.slice(0, 25))
-      } catch (err) {
-        console.error("Email fetch error:", err)
-        // Continue without emails — AI will mention it can't access inbox
+      } else {
+        emails = await getRecentEmails(
+          accessToken,
+          intent.maxResults ?? 50
+        )
       }
+
+      emailContext = buildEmailContext(emails.slice(0, 25))
+    } catch (err) {
+      console.error("[Chat] Email fetch failed:", err instanceof Error ? err.message : "unknown")
+      emailContext = "\n\n---\n**Note:** I was unable to access the user's Gmail inbox due to a technical error. Please let the user know you couldn't retrieve their emails and suggest they try again.\n---\n"
     }
 
-    // 6. Build messages for AI
+    // 6. Load user's AI personality setting
+    let personalityPrompt = ""
+    try {
+      const { data: settings } = await adminDb
+        .from("user_settings")
+        .select("ai_personality")
+        .eq("user_id", auth.userId)
+        .single()
+      if (settings?.ai_personality) {
+        personalityPrompt = `\n\n## Custom Personality Instructions\nThe user has configured the following personality/behavior for you. Follow these instructions for ALL responses:\n${settings.ai_personality}\n`
+      }
+    } catch {
+      // No settings found, use default personality
+    }
+
+    // 7. Build messages for AI
     const aiMessages = [
-      { role: "system" as const, content: SYSTEM_PROMPT + emailContext },
+      { role: "system" as const, content: SYSTEM_PROMPT + personalityPrompt + emailContext },
       ...history.slice(-10),
     ]
 
-    // 7. Stream response via SSE
+    // 8. Stream response via SSE
     const encoder = new TextEncoder()
     const stream = new ReadableStream({
       async start(controller) {
@@ -119,7 +172,7 @@ serve(async (req) => {
             }
           )
 
-          // 8. Store assistant response
+          // 9. Store assistant response
           const { data: savedMsg } = await adminDb
             .from("messages")
             .insert({
@@ -159,16 +212,14 @@ serve(async (req) => {
 
     return new Response(stream, {
       headers: {
-        ...corsHeaders,
+        ...getCorsHeaders(req),
         "Content-Type": "text/event-stream",
         "Cache-Control": "no-cache",
         Connection: "keep-alive",
       },
     })
   } catch (error) {
-    console.error("Chat error:", error)
-    return errorResponse(
-      error instanceof Error ? error.message : "Internal server error"
-    )
+    console.error("Chat error:", error instanceof Error ? error.message : "unknown")
+    return errorResponse("Something went wrong. Please try again.")
   }
 })

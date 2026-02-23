@@ -1,5 +1,43 @@
 const GMAIL_API_BASE = "https://gmail.googleapis.com/gmail/v1/users/me"
 
+function decodeBase64Url(data: string): string {
+  return atob(data.replace(/-/g, "+").replace(/_/g, "/"))
+}
+
+// deno-lint-ignore no-explicit-any
+function extractBody(payload: any): string {
+  // Direct body (simple messages)
+  if (payload?.body?.data) {
+    return decodeBase64Url(payload.body.data)
+  }
+
+  // Multipart — search recursively for text/plain, fallback to text/html
+  if (payload?.parts) {
+    // First try text/plain
+    for (const part of payload.parts) {
+      if (part.mimeType === "text/plain" && part.body?.data) {
+        return decodeBase64Url(part.body.data)
+      }
+    }
+    // Then try text/html
+    for (const part of payload.parts) {
+      if (part.mimeType === "text/html" && part.body?.data) {
+        // Strip HTML tags for a rough plaintext version
+        const html = decodeBase64Url(part.body.data)
+        return html.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim()
+      }
+    }
+    // Recurse into nested multipart parts
+    for (const part of payload.parts) {
+      if (part.parts) {
+        const nested = extractBody(part)
+        if (nested) return nested
+      }
+    }
+  }
+  return ""
+}
+
 export interface Email {
   id: string
   threadId: string
@@ -21,11 +59,14 @@ export async function getRecentEmails(
   )
 
   if (!response.ok) {
-    throw new Error("Failed to fetch emails")
+    const errText = await response.text()
+    console.error("[Gmail] getRecentEmails failed:", response.status, errText)
+    throw new Error(`Failed to fetch emails: ${response.status} ${errText}`)
   }
 
   const data = await response.json()
   const messages: Array<{ id: string }> = data.messages || []
+  console.log("[Gmail] Listed", messages.length, "message IDs")
   return getEmails(accessToken, messages.map((m) => m.id))
 }
 
@@ -40,15 +81,142 @@ export async function searchEmails(
   )
 
   if (!response.ok) {
-    throw new Error("Failed to search emails")
+    const errText = await response.text()
+    console.error("[Gmail] searchEmails failed:", response.status, errText)
+    throw new Error(`Failed to search emails: ${response.status} ${errText}`)
   }
 
   const data = await response.json()
   const messages: Array<{ id: string }> = data.messages || []
+  console.log("[Gmail] Search found", messages.length, "message IDs for query:", query)
 
   if (messages.length === 0) return []
 
   return getEmails(accessToken, messages.map((m) => m.id))
+}
+
+function encodeBase64Url(str: string): string {
+  return btoa(str).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "")
+}
+
+function buildRawMessage(
+  to: string,
+  subject: string,
+  body: string,
+  inReplyTo?: string,
+  references?: string,
+  from?: string
+): string {
+  const lines: string[] = []
+  if (from) lines.push(`From: ${from}`)
+  lines.push(`To: ${to}`)
+  lines.push(`Subject: ${subject}`)
+  lines.push("Content-Type: text/plain; charset=UTF-8")
+  if (inReplyTo) {
+    lines.push(`In-Reply-To: ${inReplyTo}`)
+    lines.push(`References: ${references || inReplyTo}`)
+  }
+  lines.push("")
+  lines.push(body)
+  return encodeBase64Url(lines.join("\r\n"))
+}
+
+export async function sendEmail(
+  accessToken: string,
+  to: string,
+  subject: string,
+  body: string,
+  replyToMessageId?: string
+): Promise<{ id: string; threadId: string }> {
+  let inReplyTo: string | undefined
+  let references: string | undefined
+
+  // If replying, fetch the Message-ID header of the original
+  if (replyToMessageId) {
+    const origResponse = await fetch(
+      `${GMAIL_API_BASE}/messages/${replyToMessageId}?format=metadata&metadataHeaders=Message-ID`,
+      { headers: { Authorization: `Bearer ${accessToken}` } }
+    )
+    if (origResponse.ok) {
+      const origData = await origResponse.json()
+      const msgIdHeader = origData.payload?.headers?.find(
+        (h: { name: string; value: string }) =>
+          h.name.toLowerCase() === "message-id"
+      )
+      if (msgIdHeader) {
+        inReplyTo = msgIdHeader.value
+        references = msgIdHeader.value
+      }
+    }
+  }
+
+  const raw = buildRawMessage(to, subject, body, inReplyTo, references)
+
+  const response = await fetch(`${GMAIL_API_BASE}/messages/send`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ raw }),
+  })
+
+  if (!response.ok) {
+    const errText = await response.text()
+    console.error("[Gmail] sendEmail failed:", response.status, errText)
+    throw new Error(`Failed to send email: ${response.status}`)
+  }
+
+  const data = await response.json()
+  return { id: data.id, threadId: data.threadId }
+}
+
+export async function createDraft(
+  accessToken: string,
+  to: string,
+  subject: string,
+  body: string,
+  replyToMessageId?: string
+): Promise<{ id: string; message: { id: string; threadId: string } }> {
+  let inReplyTo: string | undefined
+  let references: string | undefined
+
+  if (replyToMessageId) {
+    const origResponse = await fetch(
+      `${GMAIL_API_BASE}/messages/${replyToMessageId}?format=metadata&metadataHeaders=Message-ID`,
+      { headers: { Authorization: `Bearer ${accessToken}` } }
+    )
+    if (origResponse.ok) {
+      const origData = await origResponse.json()
+      const msgIdHeader = origData.payload?.headers?.find(
+        (h: { name: string; value: string }) =>
+          h.name.toLowerCase() === "message-id"
+      )
+      if (msgIdHeader) {
+        inReplyTo = msgIdHeader.value
+        references = msgIdHeader.value
+      }
+    }
+  }
+
+  const raw = buildRawMessage(to, subject, body, inReplyTo, references)
+
+  const response = await fetch(`${GMAIL_API_BASE}/drafts`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ message: { raw } }),
+  })
+
+  if (!response.ok) {
+    const errText = await response.text()
+    console.error("[Gmail] createDraft failed:", response.status, errText)
+    throw new Error(`Failed to create draft: ${response.status}`)
+  }
+
+  return response.json()
 }
 
 async function getEmail(
@@ -77,15 +245,10 @@ async function getEmail(
     ""
 
   let body = ""
-  if (data.payload?.body?.data) {
-    body = atob(data.payload.body.data.replace(/-/g, "+").replace(/_/g, "/"))
-  } else if (data.payload?.parts) {
-    const textPart = data.payload.parts.find(
-      (p: { mimeType: string }) => p.mimeType === "text/plain"
-    )
-    if (textPart?.body?.data) {
-      body = atob(textPart.body.data.replace(/-/g, "+").replace(/_/g, "/"))
-    }
+  try {
+    body = extractBody(data.payload)
+  } catch (e) {
+    console.error("[Gmail] Body decode error for message", messageId, e)
   }
 
   return {

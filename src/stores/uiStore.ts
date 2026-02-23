@@ -5,6 +5,7 @@ export type ViewName =
   | 'auth'
   | 'onboarding'
   | 'chat'
+  | 'history'
   | 'settings'
   | 'account'
   | 'legal'
