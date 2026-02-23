@@ -1,0 +1,522 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Spotlight — AI Email Assistant</title>
+  <link rel="icon" type="image/png" href="/icon-128.png" />
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: #09090b;
+      color: #fafafa;
+      overflow-x: hidden;
+    }
+
+    /* Gradient background */
+    .bg-glow {
+      position: fixed;
+      top: -40%;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 800px;
+      height: 800px;
+      background: radial-gradient(circle, rgba(139, 92, 246, 0.15) 0%, rgba(99, 102, 241, 0.05) 40%, transparent 70%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .container {
+      max-width: 720px;
+      margin: 0 auto;
+      padding: 0 1.5rem;
+      position: relative;
+      z-index: 1;
+    }
+
+    /* Nav */
+    nav {
+      padding: 1.5rem 0;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .logo {
+      font-size: 1.125rem;
+      font-weight: 700;
+      background: linear-gradient(135deg, #a78bfa, #818cf8);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .nav-links a {
+      color: #a1a1aa;
+      text-decoration: none;
+      font-size: 0.875rem;
+      font-weight: 500;
+      transition: color 0.2s;
+    }
+    .nav-links a:hover { color: #fafafa; }
+
+    /* Hero */
+    .hero {
+      text-align: center;
+      padding: 6rem 0 4rem;
+    }
+    .badge {
+      display: inline-block;
+      padding: 0.375rem 1rem;
+      border-radius: 999px;
+      border: 1px solid rgba(139, 92, 246, 0.3);
+      background: rgba(139, 92, 246, 0.08);
+      color: #a78bfa;
+      font-size: 0.75rem;
+      font-weight: 600;
+      letter-spacing: 0.025em;
+      margin-bottom: 1.5rem;
+    }
+    h1 {
+      font-size: 3.25rem;
+      font-weight: 800;
+      line-height: 1.1;
+      letter-spacing: -0.03em;
+      margin-bottom: 1.25rem;
+    }
+    h1 .gradient {
+      background: linear-gradient(135deg, #a78bfa, #818cf8, #6366f1);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .subtitle {
+      font-size: 1.125rem;
+      color: #a1a1aa;
+      line-height: 1.7;
+      max-width: 520px;
+      margin: 0 auto 2.5rem;
+    }
+
+    /* CTA */
+    .cta-group {
+      display: flex;
+      gap: 1rem;
+      justify-content: center;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+    .btn-primary {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.875rem 2rem;
+      background: linear-gradient(135deg, #8b5cf6, #6366f1);
+      color: #fff;
+      font-size: 0.938rem;
+      font-weight: 600;
+      border: none;
+      border-radius: 12px;
+      text-decoration: none;
+      cursor: pointer;
+      transition: all 0.2s;
+      box-shadow: 0 4px 24px rgba(139, 92, 246, 0.3);
+    }
+    .btn-primary:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 6px 32px rgba(139, 92, 246, 0.4);
+    }
+    .btn-primary svg { width: 18px; height: 18px; }
+    .btn-secondary {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.875rem 2rem;
+      background: rgba(255,255,255,0.05);
+      color: #d4d4d8;
+      font-size: 0.938rem;
+      font-weight: 600;
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 12px;
+      text-decoration: none;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .btn-secondary:hover {
+      background: rgba(255,255,255,0.08);
+      color: #fafafa;
+    }
+
+    /* Features */
+    .features {
+      padding: 4rem 0;
+    }
+    .features-label {
+      text-align: center;
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: #a78bfa;
+      margin-bottom: 2.5rem;
+    }
+    .feature-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+    }
+    .feature-card {
+      padding: 1.5rem;
+      border-radius: 16px;
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.06);
+      transition: all 0.2s;
+    }
+    .feature-card:hover {
+      background: rgba(255,255,255,0.05);
+      border-color: rgba(139, 92, 246, 0.2);
+    }
+    .feature-icon {
+      width: 40px;
+      height: 40px;
+      border-radius: 10px;
+      background: rgba(139, 92, 246, 0.1);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 0.75rem;
+      font-size: 1.125rem;
+    }
+    .feature-card h3 {
+      font-size: 0.938rem;
+      font-weight: 600;
+      margin-bottom: 0.375rem;
+    }
+    .feature-card p {
+      font-size: 0.8125rem;
+      color: #71717a;
+      line-height: 1.5;
+    }
+
+    /* Install steps */
+    .install {
+      padding: 4rem 0;
+    }
+    .install h2 {
+      text-align: center;
+      font-size: 1.75rem;
+      font-weight: 700;
+      margin-bottom: 0.5rem;
+    }
+    .install .sub {
+      text-align: center;
+      color: #71717a;
+      font-size: 0.875rem;
+      margin-bottom: 2.5rem;
+    }
+    .steps {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+    .step {
+      display: flex;
+      gap: 1rem;
+      align-items: flex-start;
+      padding: 1.25rem 1.5rem;
+      border-radius: 14px;
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.06);
+    }
+    .step-num {
+      flex-shrink: 0;
+      width: 28px;
+      height: 28px;
+      border-radius: 8px;
+      background: rgba(139, 92, 246, 0.15);
+      color: #a78bfa;
+      font-size: 0.8125rem;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .step-text h3 {
+      font-size: 0.875rem;
+      font-weight: 600;
+      margin-bottom: 0.25rem;
+    }
+    .step-text p {
+      font-size: 0.8125rem;
+      color: #71717a;
+      line-height: 1.5;
+    }
+    .step-text code {
+      background: rgba(139, 92, 246, 0.1);
+      color: #a78bfa;
+      padding: 0.125rem 0.5rem;
+      border-radius: 6px;
+      font-size: 0.75rem;
+      font-family: 'SF Mono', monospace;
+    }
+
+    /* Feedback */
+    .feedback {
+      padding: 4rem 0;
+    }
+    .feedback h2 {
+      text-align: center;
+      font-size: 1.75rem;
+      font-weight: 700;
+      margin-bottom: 0.5rem;
+    }
+    .feedback .sub {
+      text-align: center;
+      color: #71717a;
+      font-size: 0.875rem;
+      margin-bottom: 2rem;
+    }
+    .feedback-form {
+      max-width: 480px;
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+    .feedback-row {
+      display: flex;
+      gap: 0.75rem;
+    }
+    .feedback-row input {
+      flex: 1;
+    }
+    .feedback-form input,
+    .feedback-form textarea {
+      width: 100%;
+      padding: 0.75rem 1rem;
+      border-radius: 12px;
+      border: 1px solid rgba(255,255,255,0.1);
+      background: rgba(255,255,255,0.04);
+      color: #fafafa;
+      font-family: 'Inter', sans-serif;
+      font-size: 0.875rem;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    .feedback-form input::placeholder,
+    .feedback-form textarea::placeholder {
+      color: #52525b;
+    }
+    .feedback-form input:focus,
+    .feedback-form textarea:focus {
+      border-color: rgba(139, 92, 246, 0.5);
+    }
+    .feedback-form textarea {
+      resize: vertical;
+      min-height: 100px;
+    }
+    .feedback-form button {
+      padding: 0.75rem 2rem;
+      background: linear-gradient(135deg, #8b5cf6, #6366f1);
+      color: #fff;
+      font-size: 0.875rem;
+      font-weight: 600;
+      border: none;
+      border-radius: 12px;
+      cursor: pointer;
+      transition: all 0.2s;
+      font-family: 'Inter', sans-serif;
+    }
+    .feedback-form button:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 4px 20px rgba(139, 92, 246, 0.3);
+    }
+    .feedback-form button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none;
+      box-shadow: none;
+    }
+    #feedback-success {
+      text-align: center;
+      color: #a78bfa;
+      font-size: 0.875rem;
+      font-weight: 500;
+      display: none;
+      margin-top: 0.5rem;
+    }
+
+    /* Footer */
+    footer {
+      padding: 3rem 0;
+      text-align: center;
+      border-top: 1px solid rgba(255,255,255,0.06);
+    }
+    footer p {
+      font-size: 0.8125rem;
+      color: #52525b;
+    }
+    footer a {
+      color: #71717a;
+      text-decoration: none;
+      transition: color 0.2s;
+    }
+    footer a:hover { color: #a78bfa; }
+
+    /* Responsive */
+    @media (max-width: 600px) {
+      h1 { font-size: 2.25rem; }
+      .subtitle { font-size: 1rem; }
+      .feature-grid { grid-template-columns: 1fr; }
+      .cta-group { flex-direction: column; }
+    }
+  </style>
+</head>
+<body>
+  <div class="bg-glow"></div>
+
+  <div class="container">
+    <nav>
+      <div class="logo">Spotlight</div>
+      <div class="nav-links" style="display:flex;gap:1.25rem;">
+        <a href="#feedback">Feedback</a>
+        <a href="/privacy.html">Privacy</a>
+      </div>
+    </nav>
+
+    <section class="hero">
+      <div class="badge">Chrome Extension</div>
+      <h1>Your inbox,<br/><span class="gradient">powered by AI.</span></h1>
+      <p class="subtitle">
+        Spotlight is an AI email assistant that lives in your Chrome sidebar.
+        Search, summarize, draft replies, and get notified — all through natural conversation.
+      </p>
+      <div class="cta-group">
+        <a href="/spotlight-extension.zip" class="btn-primary" download>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Download Extension
+        </a>
+        <a href="#install" class="btn-secondary">How to Install</a>
+      </div>
+    </section>
+
+    <section class="features">
+      <p class="features-label">What you can do</p>
+      <div class="feature-grid">
+        <div class="feature-card">
+          <div class="feature-icon">💬</div>
+          <h3>Chat with your inbox</h3>
+          <p>Ask questions like "What did my professor send last week?" and get instant answers.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">✉️</div>
+          <h3>Send & draft emails</h3>
+          <p>Compose replies and new emails right from the chat. Send or save as draft with one click.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">🔔</div>
+          <h3>Smart notifications</h3>
+          <p>Set custom rules to get notified when specific people email you or keywords appear.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">🌙</div>
+          <h3>Dark mode & more</h3>
+          <p>Customize your experience with dark mode, AI personality settings, and conversation history.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="install" id="install">
+      <h2>Install in 3 steps</h2>
+      <p class="sub">Takes about 30 seconds. No store needed.</p>
+      <div class="steps">
+        <div class="step">
+          <div class="step-num">1</div>
+          <div class="step-text">
+            <h3>Download & unzip</h3>
+            <p>Click the download button above. Unzip the file — you'll get a folder with the extension files.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">2</div>
+          <div class="step-text">
+            <h3>Open Chrome Extensions</h3>
+            <p>Go to <code>chrome://extensions</code> in your browser. Enable <strong>Developer mode</strong> (toggle in the top right).</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">3</div>
+          <div class="step-text">
+            <h3>Load the extension</h3>
+            <p>Click <strong>"Load unpacked"</strong> and select the unzipped folder. Spotlight will appear in your extensions bar — click it to open the side panel.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="feedback" id="feedback">
+      <h2>Send us feedback</h2>
+      <p class="sub">Bug reports, feature ideas, or just say hi. We read everything.</p>
+      <form class="feedback-form" id="feedback-form">
+        <div class="feedback-row">
+          <input type="text" id="fb-name" placeholder="Name (optional)" />
+          <input type="email" id="fb-email" placeholder="Email (optional)" />
+        </div>
+        <textarea id="fb-message" placeholder="What's on your mind?" required></textarea>
+        <button type="submit" id="fb-submit">Send Feedback</button>
+        <p id="feedback-success"></p>
+      </form>
+    </section>
+
+    <footer>
+      <p>Spotlight &mdash; Built by Liam Harvey &nbsp;·&nbsp; <a href="/privacy.html">Privacy Policy</a></p>
+    </footer>
+  </div>
+
+  <script>
+    document.getElementById('feedback-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const btn = document.getElementById('fb-submit');
+      const msg = document.getElementById('feedback-success');
+      const name = document.getElementById('fb-name').value.trim();
+      const email = document.getElementById('fb-email').value.trim();
+      const message = document.getElementById('fb-message').value.trim();
+
+      if (!message) return;
+
+      btn.disabled = true;
+      btn.textContent = 'Sending...';
+
+      try {
+        const res = await fetch('https://ilvubumkfsbzbzinwiyt.supabase.co/functions/v1/feedback', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlsdnVidW1rZnNiemJ6aW53aXl0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjM3NjIyMjIsImV4cCI6MjA3OTMzODIyMn0.pkMg-1TfOSMdrt9i-UAgjkgdCMx3ienYzjK-soEe58A'
+          },
+          body: JSON.stringify({ name: name || 'Anonymous', email, message })
+        });
+
+        if (res.ok) {
+          msg.textContent = 'Thanks for your feedback! We\'ll get back to you.';
+          msg.style.display = 'block';
+          msg.style.color = '#a78bfa';
+          document.getElementById('fb-name').value = '';
+          document.getElementById('fb-email').value = '';
+          document.getElementById('fb-message').value = '';
+          btn.textContent = 'Sent!';
+          setTimeout(() => { btn.textContent = 'Send Feedback'; btn.disabled = false; }, 3000);
+        } else {
+          throw new Error('Failed');
+        }
+      } catch {
+        msg.textContent = 'Something went wrong. Try again.';
+        msg.style.display = 'block';
+        msg.style.color = '#f87171';
+        btn.textContent = 'Send Feedback';
+        btn.disabled = false;
+      }
+    });
+  </script>
+</body>
+</html>

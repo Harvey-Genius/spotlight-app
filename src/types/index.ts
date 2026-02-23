@@ -8,8 +8,11 @@ export type {
   SendMessageRequest,
   SSEChunkEvent,
   SSEDoneEvent,
+  SSEErrorEvent,
   SSEEvent,
   StoreTokensRequest,
   SettingsResponse,
+  NotificationRule,
+  UsageStatus,
   ApiError,
 } from './api'

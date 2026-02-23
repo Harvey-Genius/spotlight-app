@@ -11,7 +11,8 @@ export async function* streamSSE(
     const { done, value } = await reader.read()
     if (done) break
 
-    buffer += decoder.decode(value, { stream: true })
+    const chunk = decoder.decode(value, { stream: true })
+    buffer += chunk
     const lines = buffer.split('\n')
     buffer = lines.pop() || ''
 
@@ -24,7 +25,7 @@ export async function* streamSSE(
         const parsed = JSON.parse(data) as SSEEvent
         yield parsed
       } catch {
-        // Skip malformed events
+        // Skip malformed SSE data
       }
     }
   }

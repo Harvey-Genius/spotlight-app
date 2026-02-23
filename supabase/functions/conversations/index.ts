@@ -64,6 +64,16 @@ serve(async (req) => {
         return errorResponse("Conversation not found", 404)
       }
 
+      // Delete messages first (foreign key constraint)
+      const { error: msgError } = await adminDb
+        .from("messages")
+        .delete()
+        .eq("conversation_id", conversationId)
+
+      if (msgError) {
+        return errorResponse("Failed to delete messages")
+      }
+
       const { error } = await adminDb
         .from("conversations")
         .delete()
@@ -78,9 +88,7 @@ serve(async (req) => {
 
     return errorResponse("Method not allowed", 405)
   } catch (error) {
-    console.error("conversations error:", error)
-    return errorResponse(
-      error instanceof Error ? error.message : "Internal server error"
-    )
+    console.error("conversations error:", error instanceof Error ? error.message : "unknown")
+    return errorResponse("Something went wrong. Please try again.")
   }
 })

@@ -42,8 +42,14 @@ export const api = {
     })
 
     if (!response.ok) {
-      const err = await response.json().catch(() => ({ error: 'Request failed' }))
-      throw new Error(err.error || 'Chat request failed')
+      const errText = await response.text()
+      try {
+        const err = JSON.parse(errText)
+        throw new Error(err.error || `HTTP ${response.status}`)
+      } catch (e) {
+        if (e instanceof SyntaxError) throw new Error(errText || `HTTP ${response.status}`)
+        throw e
+      }
     }
 
     yield* streamSSE(response)
@@ -58,6 +64,16 @@ export const api = {
     return data as ConversationSummary[]
   },
 
+  async getConversationMessages(conversationId: string): Promise<import('@/types').ChatMessage[]> {
+    const headers = await getAuthHeaders()
+    const response = await fetch(
+      `${getFunctionsUrl('messages')}?conversation_id=${conversationId}`,
+      { method: 'GET', headers }
+    )
+    if (!response.ok) throw new Error('Failed to load messages')
+    return response.json()
+  },
+
   async deleteConversation(id: string): Promise<void> {
     const headers = await getAuthHeaders()
     const response = await fetch(
@@ -65,6 +81,102 @@ export const api = {
       { method: 'DELETE', headers }
     )
     if (!response.ok) throw new Error('Failed to delete conversation')
+  },
+
+  // --- Email Actions ---
+  async sendEmail(
+    to: string,
+    subject: string,
+    body: string,
+    replyToMessageId?: string
+  ): Promise<{ success: boolean }> {
+    const headers = await getAuthHeaders()
+    const response = await fetch(getFunctionsUrl('email-actions'), {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({
+        action: 'send',
+        to,
+        subject,
+        body,
+        reply_to_message_id: replyToMessageId,
+      }),
+    })
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({ error: 'Send failed' }))
+      throw new Error(err.error || 'Failed to send email')
+    }
+    return response.json()
+  },
+
+  async createDraft(
+    to: string,
+    subject: string,
+    body: string,
+    replyToMessageId?: string
+  ): Promise<{ success: boolean; draft_id: string }> {
+    const headers = await getAuthHeaders()
+    const response = await fetch(getFunctionsUrl('email-actions'), {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({
+        action: 'draft',
+        to,
+        subject,
+        body,
+        reply_to_message_id: replyToMessageId,
+      }),
+    })
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({ error: 'Draft failed' }))
+      throw new Error(err.error || 'Failed to create draft')
+    }
+    return response.json()
+  },
+
+  // --- Notification Rules ---
+  async getNotificationRules(): Promise<import('@/types').NotificationRule[]> {
+    const headers = await getAuthHeaders()
+    const response = await fetch(getFunctionsUrl('notification-rules'), {
+      method: 'GET',
+      headers,
+    })
+    if (!response.ok) throw new Error('Failed to fetch notification rules')
+    return response.json()
+  },
+
+  async createNotificationRule(
+    ruleType: 'from' | 'subject' | 'contains',
+    value: string
+  ): Promise<import('@/types').NotificationRule> {
+    const headers = await getAuthHeaders()
+    const response = await fetch(getFunctionsUrl('notification-rules'), {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ rule_type: ruleType, value }),
+    })
+    if (!response.ok) throw new Error('Failed to create notification rule')
+    return response.json()
+  },
+
+  async deleteNotificationRule(id: string): Promise<void> {
+    const headers = await getAuthHeaders()
+    const response = await fetch(
+      `${getFunctionsUrl('notification-rules')}?id=${id}`,
+      { method: 'DELETE', headers }
+    )
+    if (!response.ok) throw new Error('Failed to delete notification rule')
+  },
+
+  // --- Usage ---
+  async getUsageStatus(): Promise<import('@/types').UsageStatus> {
+    const headers = await getAuthHeaders()
+    const response = await fetch(getFunctionsUrl('usage-status'), {
+      method: 'GET',
+      headers,
+    })
+    if (!response.ok) return { used: 0, limit: 10, remaining: 10 }
+    return response.json()
   },
 
   // --- Settings ---
@@ -84,6 +196,33 @@ export const api = {
     })
     if (error) throw error
     return data as SettingsResponse
+  },
+
+  // --- Subscription ---
+  async createCheckout(): Promise<{ url: string }> {
+    const headers = await getAuthHeaders()
+    const response = await fetch(getFunctionsUrl('create-checkout'), {
+      method: 'POST',
+      headers,
+    })
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({ error: 'Checkout failed' }))
+      throw new Error(err.error || 'Failed to create checkout')
+    }
+    return response.json()
+  },
+
+  async manageSubscription(): Promise<{ url: string }> {
+    const headers = await getAuthHeaders()
+    const response = await fetch(getFunctionsUrl('manage-subscription'), {
+      method: 'POST',
+      headers,
+    })
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({ error: 'Failed' }))
+      throw new Error(err.error || 'Failed to open billing portal')
+    }
+    return response.json()
   },
 
   // --- Auth ---
