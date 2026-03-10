@@ -1,0 +1,473 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Design A — Minimal & Clean</title>
+  <link rel="icon" type="image/png" href="/icon-128.png" />
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'Inter', -apple-system, sans-serif;
+      background: #fafafa;
+      color: #18181b;
+    }
+
+    .container { max-width: 800px; margin: 0 auto; padding: 0 2rem; }
+
+    /* Nav */
+    nav {
+      padding: 1.25rem 0;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid #e4e4e7;
+    }
+    .logo {
+      font-size: 1rem;
+      font-weight: 700;
+      color: #18181b;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .logo-icon {
+      width: 28px;
+      height: 28px;
+      border-radius: 8px;
+      background: linear-gradient(135deg, #8b5cf6, #6366f1);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-size: 0.75rem;
+      font-weight: 800;
+    }
+    .nav-links { display: flex; gap: 1.5rem; }
+    .nav-links a {
+      color: #71717a;
+      text-decoration: none;
+      font-size: 0.8125rem;
+      font-weight: 500;
+      transition: color 0.2s;
+    }
+    .nav-links a:hover { color: #18181b; }
+
+    /* Hero */
+    .hero {
+      padding: 6rem 0 5rem;
+      text-align: center;
+    }
+    .hero-tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.3rem 0.875rem;
+      border-radius: 999px;
+      background: #f4f4f5;
+      border: 1px solid #e4e4e7;
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: #52525b;
+      margin-bottom: 2rem;
+    }
+    .hero-tag .dot {
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: #22c55e;
+    }
+    h1 {
+      font-size: 3.75rem;
+      font-weight: 800;
+      line-height: 1.05;
+      letter-spacing: -0.04em;
+      color: #09090b;
+    }
+    h1 .highlight {
+      background: linear-gradient(135deg, #8b5cf6, #6366f1);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .hero p {
+      font-size: 1.125rem;
+      color: #71717a;
+      line-height: 1.7;
+      max-width: 480px;
+      margin: 1.5rem auto 2.5rem;
+    }
+    .cta-row {
+      display: flex;
+      gap: 0.75rem;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+    .btn-primary {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.8rem 1.75rem;
+      background: #18181b;
+      color: #fff;
+      font-size: 0.875rem;
+      font-weight: 600;
+      border: none;
+      border-radius: 10px;
+      text-decoration: none;
+      transition: all 0.2s;
+    }
+    .btn-primary:hover { background: #27272a; transform: translateY(-1px); }
+    .btn-primary svg { width: 18px; height: 18px; }
+    .btn-ghost {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.8rem 1.75rem;
+      background: transparent;
+      color: #52525b;
+      font-size: 0.875rem;
+      font-weight: 600;
+      border: 1px solid #e4e4e7;
+      border-radius: 10px;
+      text-decoration: none;
+      transition: all 0.2s;
+    }
+    .btn-ghost:hover { border-color: #a1a1aa; color: #18181b; }
+    .hero-note {
+      margin-top: 1.25rem;
+      font-size: 0.75rem;
+      color: #a1a1aa;
+    }
+
+    /* Divider */
+    .divider {
+      width: 48px;
+      height: 1px;
+      background: #e4e4e7;
+      margin: 0 auto;
+    }
+
+    /* Features */
+    .features { padding: 5rem 0; }
+    .section-label {
+      text-align: center;
+      font-size: 0.6875rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.15em;
+      color: #8b5cf6;
+      margin-bottom: 0.75rem;
+    }
+    .section-title {
+      text-align: center;
+      font-size: 1.75rem;
+      font-weight: 700;
+      color: #09090b;
+      margin-bottom: 3rem;
+    }
+    .feature-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 1.25rem;
+    }
+    .feature-card {
+      padding: 1.5rem;
+      border-radius: 12px;
+      border: 1px solid #e4e4e7;
+      background: #fff;
+      transition: all 0.2s;
+    }
+    .feature-card:hover { border-color: #d4d4d8; box-shadow: 0 4px 16px rgba(0,0,0,0.04); }
+    .feature-emoji {
+      font-size: 1.25rem;
+      margin-bottom: 0.75rem;
+    }
+    .feature-card h3 {
+      font-size: 0.875rem;
+      font-weight: 600;
+      margin-bottom: 0.375rem;
+    }
+    .feature-card .new-badge {
+      display: inline-block;
+      padding: 0.125rem 0.4rem;
+      border-radius: 4px;
+      background: #dcfce7;
+      color: #16a34a;
+      font-size: 0.5625rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      vertical-align: middle;
+      margin-left: 0.375rem;
+    }
+    .feature-card p {
+      font-size: 0.8125rem;
+      color: #71717a;
+      line-height: 1.55;
+    }
+
+    /* Category demo */
+    .cat-pills {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.3rem;
+      margin-top: 0.625rem;
+    }
+    .cat-pill {
+      padding: 0.15rem 0.5rem;
+      border-radius: 999px;
+      font-size: 0.625rem;
+      font-weight: 600;
+    }
+    .c-work { background: #dbeafe; color: #2563eb; }
+    .c-promo { background: #fef9c3; color: #a16207; }
+    .c-fin { background: #ffedd5; color: #c2410c; }
+    .c-social { background: #dcfce7; color: #16a34a; }
+    .c-imp { background: #fecaca; color: #dc2626; }
+
+    /* Steps */
+    .steps-section { padding: 4rem 0; }
+    .steps {
+      display: flex;
+      gap: 2rem;
+      margin-top: 2rem;
+    }
+    .step {
+      flex: 1;
+      text-align: center;
+    }
+    .step-num {
+      width: 32px;
+      height: 32px;
+      border-radius: 999px;
+      background: #f4f4f5;
+      color: #8b5cf6;
+      font-size: 0.8125rem;
+      font-weight: 700;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 0.75rem;
+    }
+    .step h3 {
+      font-size: 0.875rem;
+      font-weight: 600;
+      margin-bottom: 0.375rem;
+    }
+    .step p {
+      font-size: 0.8125rem;
+      color: #71717a;
+      line-height: 1.5;
+    }
+
+    /* Feedback */
+    .feedback { padding: 4rem 0; }
+    .feedback-form {
+      max-width: 420px;
+      margin: 2rem auto 0;
+      display: flex;
+      flex-direction: column;
+      gap: 0.625rem;
+    }
+    .feedback-row { display: flex; gap: 0.625rem; }
+    .feedback-row input { flex: 1; }
+    .feedback-form input,
+    .feedback-form textarea {
+      width: 100%;
+      padding: 0.7rem 0.875rem;
+      border-radius: 10px;
+      border: 1px solid #e4e4e7;
+      background: #fff;
+      color: #18181b;
+      font-family: 'Inter', sans-serif;
+      font-size: 0.8125rem;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    .feedback-form input::placeholder, .feedback-form textarea::placeholder { color: #a1a1aa; }
+    .feedback-form input:focus, .feedback-form textarea:focus { border-color: #8b5cf6; }
+    .feedback-form textarea { resize: vertical; min-height: 90px; }
+    .feedback-form button {
+      padding: 0.7rem;
+      background: #18181b;
+      color: #fff;
+      font-size: 0.8125rem;
+      font-weight: 600;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: all 0.2s;
+      font-family: 'Inter', sans-serif;
+    }
+    .feedback-form button:hover { background: #27272a; }
+    .feedback-form button:disabled { opacity: 0.4; cursor: not-allowed; }
+    #feedback-success { text-align: center; color: #8b5cf6; font-size: 0.8125rem; display: none; margin-top: 0.5rem; }
+
+    /* Footer */
+    footer {
+      padding: 2.5rem 0;
+      border-top: 1px solid #e4e4e7;
+      text-align: center;
+    }
+    footer p { font-size: 0.75rem; color: #a1a1aa; }
+    footer a { color: #71717a; text-decoration: none; }
+    footer a:hover { color: #8b5cf6; }
+
+    @media (max-width: 640px) {
+      h1 { font-size: 2.5rem; }
+      .feature-grid { grid-template-columns: 1fr; }
+      .steps { flex-direction: column; gap: 1.5rem; }
+      .cta-row { flex-direction: column; align-items: center; }
+      .feedback-row { flex-direction: column; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <nav>
+      <div class="logo">
+        <div class="logo-icon">S</div>
+        Spotlight
+      </div>
+      <div class="nav-links">
+        <a href="#features">Features</a>
+        <a href="#feedback">Feedback</a>
+        <a href="/privacy.html">Privacy</a>
+        <a href="/terms.html">Terms</a>
+      </div>
+    </nav>
+
+    <section class="hero">
+      <div class="hero-tag">
+        <span class="dot"></span>
+        Live on Chrome Web Store
+      </div>
+      <h1>AI that reads<br/>your <span class="highlight">inbox</span> for you</h1>
+      <p>Search, summarize, categorize, and reply to emails through a conversational chat in your browser sidebar.</p>
+      <div class="cta-row">
+        <a href="https://chromewebstore.google.com/detail/spotlight-email-assistant/phichhkpcjpbeneoggmmhndjjbkbbfdk" class="btn-primary" target="_blank" rel="noopener">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+          Add to Chrome
+        </a>
+        <a href="#features" class="btn-ghost">Learn more</a>
+      </div>
+      <p class="hero-note">Free to use &middot; No credit card &middot; Works with Gmail</p>
+    </section>
+
+    <div class="divider"></div>
+
+    <section class="features" id="features">
+      <p class="section-label">Features</p>
+      <h2 class="section-title">Everything you need in a sidebar</h2>
+      <div class="feature-grid">
+        <div class="feature-card">
+          <div class="feature-emoji">💬</div>
+          <h3>Natural language search</h3>
+          <p>Ask anything. "Emails from Sarah last week" or "any flight confirmations?" — instant answers.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-emoji">🏷️</div>
+          <h3>Auto-categorize <span class="new-badge">New</span></h3>
+          <p>Every email gets an AI-assigned category. Filter instantly.</p>
+          <div class="cat-pills">
+            <span class="cat-pill c-work">Work</span>
+            <span class="cat-pill c-promo">Promo</span>
+            <span class="cat-pill c-fin">Finance</span>
+            <span class="cat-pill c-social">Social</span>
+            <span class="cat-pill c-imp">Important</span>
+          </div>
+        </div>
+        <div class="feature-card">
+          <div class="feature-emoji">✉️</div>
+          <h3>Compose & send</h3>
+          <p>Draft replies or new emails from chat. Send or save to drafts with one click.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-emoji">📋</div>
+          <h3>Summaries</h3>
+          <p>Long thread? Get the key points, action items, and deadlines in seconds.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-emoji">🔔</div>
+          <h3>Custom alerts</h3>
+          <p>Set rules: get notified when specific people email you or keywords appear.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-emoji">🌙</div>
+          <h3>Dark mode</h3>
+          <p>Easy on the eyes. Plus custom AI personality and conversation history.</p>
+        </div>
+      </div>
+    </section>
+
+    <div class="divider"></div>
+
+    <section class="steps-section">
+      <p class="section-label">Get started</p>
+      <h2 class="section-title">Three steps, thirty seconds</h2>
+      <div class="steps">
+        <div class="step">
+          <div class="step-num">1</div>
+          <h3>Install</h3>
+          <p>Click "Add to Chrome" — installs automatically from the Web Store.</p>
+        </div>
+        <div class="step">
+          <div class="step-num">2</div>
+          <h3>Sign in</h3>
+          <p>Authenticate with Google. We securely connect to your Gmail.</p>
+        </div>
+        <div class="step">
+          <div class="step-num">3</div>
+          <h3>Chat</h3>
+          <p>Open the sidebar and start asking. Spotlight handles the rest.</p>
+        </div>
+      </div>
+    </section>
+
+    <div class="divider"></div>
+
+    <section class="feedback" id="feedback">
+      <p class="section-label">Feedback</p>
+      <h2 class="section-title">Tell us what you think</h2>
+      <form class="feedback-form" id="feedback-form">
+        <div class="feedback-row">
+          <input type="text" id="fb-name" placeholder="Name" />
+          <input type="email" id="fb-email" placeholder="Email" />
+        </div>
+        <textarea id="fb-message" placeholder="Bugs, ideas, or just say hi..." required></textarea>
+        <button type="submit" id="fb-submit">Send Feedback</button>
+        <p id="feedback-success"></p>
+      </form>
+    </section>
+
+    <footer>
+      <p>Spotlight Email Assistant &middot; Built by Liam Harvey &nbsp;&middot;&nbsp; <a href="/privacy.html">Privacy</a> &nbsp;&middot;&nbsp; <a href="/terms.html">Terms</a></p>
+    </footer>
+  </div>
+
+  <script>
+    document.getElementById('feedback-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const btn = document.getElementById('fb-submit');
+      const msg = document.getElementById('feedback-success');
+      const name = document.getElementById('fb-name').value.trim();
+      const email = document.getElementById('fb-email').value.trim();
+      const message = document.getElementById('fb-message').value.trim();
+      if (!message) return;
+      btn.disabled = true; btn.textContent = 'Sending...';
+      try {
+        const res = await fetch('https://ilvubumkfsbzbzinwiyt.supabase.co/functions/v1/feedback', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlsdnVidW1rZnNiemJ6aW53aXl0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjM3NjIyMjIsImV4cCI6MjA3OTMzODIyMn0.pkMg-1TfOSMdrt9i-UAgjkgdCMx3ienYzjK-soEe58A' },
+          body: JSON.stringify({ name: name || 'Anonymous', email, message })
+        });
+        if (res.ok) {
+          msg.textContent = "Thanks! We'll read it."; msg.style.display = 'block'; msg.style.color = '#8b5cf6';
+          document.getElementById('fb-name').value = ''; document.getElementById('fb-email').value = ''; document.getElementById('fb-message').value = '';
+          btn.textContent = 'Sent!'; setTimeout(() => { btn.textContent = 'Send Feedback'; btn.disabled = false; }, 3000);
+        } else throw new Error();
+      } catch { msg.textContent = 'Something went wrong.'; msg.style.display = 'block'; msg.style.color = '#ef4444'; btn.textContent = 'Send Feedback'; btn.disabled = false; }
+    });
+  </script>
+</body>
+</html>
