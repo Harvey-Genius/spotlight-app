@@ -5,8 +5,6 @@ import { adminDb } from "../_shared/db.ts"
 import { getGmailToken } from "../_shared/token.ts"
 import { getRecentEmails } from "../_shared/gmail.ts"
 import type { Email } from "../_shared/gmail.ts"
-import { sendSMS } from "../_shared/twilio.ts"
-
 interface NotificationRule {
   id: string
   rule_type: "from" | "subject" | "contains"
@@ -57,18 +55,16 @@ serve(async (req) => {
     const auth = await getAuthenticatedUser(req)
     if (isErrorResponse(auth)) return auth
 
-    // 1. Check if notifications are enabled + get SMS phone number
+    // 1. Check if notifications are enabled
     const { data: settings } = await adminDb
       .from("user_settings")
-      .select("notifications_enabled, sms_phone_number")
+      .select("notifications_enabled")
       .eq("user_id", auth.userId)
       .single()
 
     if (!settings?.notifications_enabled) {
       return jsonResponse({ matches: [] })
     }
-
-    const smsPhone = settings.sms_phone_number || ""
 
     // 2. Get user's enabled rules
     const { data: rules } = await adminDb
@@ -126,14 +122,6 @@ serve(async (req) => {
       await adminDb
         .from("notified_emails")
         .upsert(inserts, { onConflict: "user_id,gmail_message_id" })
-
-      // 7. Send SMS if user has a phone number configured
-      if (smsPhone) {
-        for (const match of matches) {
-          const smsBody = `Spotlight Alert: New email from ${match.from} — Subject: ${match.subject}`.substring(0, 160)
-          await sendSMS(smsPhone, smsBody)
-        }
-      }
     }
 
     return jsonResponse({ matches })

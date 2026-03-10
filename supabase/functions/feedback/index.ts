@@ -1,8 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { handleCors, jsonResponse, errorResponse } from "../_shared/cors.ts"
 import { adminDb } from "../_shared/db.ts"
-import { sendSMS } from "../_shared/twilio.ts"
-
 const OWNER_EMAIL = "liam.c.harvey72@gmail.com"
 
 async function sendEmailNotification(name: string, email: string, message: string) {
@@ -27,7 +25,7 @@ async function sendEmailNotification(name: string, email: string, message: strin
           <p><strong>Message:</strong></p>
           <p>${message.replace(/\n/g, "<br/>")}</p>
           <hr/>
-          <p style="color:#888;font-size:12px;">Sent from spotlight-fresh.vercel.app feedback form</p>
+          <p style="color:#888;font-size:12px;">Sent from spotlight-email-ai.com feedback form</p>
         `,
       }),
     })
@@ -80,13 +78,6 @@ serve(async (req) => {
 
     // Send email notification (best-effort)
     await sendEmailNotification(safeName, safeEmail, safeMessage)
-
-    // Notify via SMS (best-effort)
-    const smsBody = `Spotlight Feedback from ${safeName}: ${safeMessage}`.substring(0, 160)
-    const ownerPhone = Deno.env.get("OWNER_PHONE_NUMBER")
-    if (ownerPhone) {
-      await sendSMS(ownerPhone, smsBody).catch(() => {})
-    }
 
     return jsonResponse({ success: true, message: "Thanks for your feedback!" })
   } catch (err) {

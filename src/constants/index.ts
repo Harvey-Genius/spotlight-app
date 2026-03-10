@@ -39,6 +39,13 @@ export const onboardingSlides = [
   },
 ]
 
+export const smartSuggestions = [
+  { label: 'Summarize my inbox', icon: '📬' },
+  { label: 'Unread emails today', icon: '📩' },
+  { label: 'What needs a reply?', icon: '↩️' },
+  { label: 'Any urgent emails?', icon: '🔥' },
+]
+
 export function getRandomGreeting(): string {
   return greetings[Math.floor(Math.random() * greetings.length)]!
 }

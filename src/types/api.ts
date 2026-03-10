@@ -31,7 +31,6 @@ export interface SettingsResponse {
   notifications_enabled: boolean
   ai_model: string
   ai_personality: string
-  sms_phone_number: string
   subscription_tier: string
 }
 

@@ -42,7 +42,7 @@ serve(async (req) => {
     // Create Stripe billing portal session
     const session = await stripePost("/billing_portal/sessions", {
       customer: settings.stripe_customer_id,
-      return_url: "https://spotlight-fresh.vercel.app/",
+      return_url: "https://spotlight-email-ai.com/",
     })
 
     return jsonResponse({ url: session.url })

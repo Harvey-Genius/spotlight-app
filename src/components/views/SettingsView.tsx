@@ -12,7 +12,6 @@ import {
   FileTextIcon,
   LogOutIcon,
   SparkleIcon,
-  PhoneIcon,
   CrownIcon,
 } from '@/icons'
 import { api } from '@/api/client'
@@ -60,12 +59,8 @@ export function SettingsView() {
   const signOut = useAuthStore((s) => s.signOut)
   const reset = useUiStore((s) => s.reset)
   const subscriptionTier = useSettingsStore((s) => s.subscriptionTier)
-  const smsPhoneNumber = useSettingsStore((s) => s.smsPhoneNumber)
-  const setSmsPhoneNumber = useSettingsStore((s) => s.setSmsPhoneNumber)
   const clearMessages = useChatStore((s) => s.clearMessages)
   const [upgradeLoading, setUpgradeLoading] = useState(false)
-  const [phoneInput, setPhoneInput] = useState(smsPhoneNumber || '')
-  const [phoneSaved, setPhoneSaved] = useState(false)
   const [showCustom, setShowCustom] = useState(
     !PERSONALITY_PRESETS.some((p) => p.value === aiPersonality) && aiPersonality !== ''
   )
@@ -115,7 +110,7 @@ export function SettingsView() {
           </div>
         </div>
 
-        {/* Subscription */}
+        {/* Subscription — hidden until Stripe live mode is ready
         <div>
           <p
             className={`text-xs font-medium ${theme.textMuted} uppercase tracking-wider px-2 mb-2`}
@@ -190,6 +185,7 @@ export function SettingsView() {
             </div>
           )}
         </div>
+        */}
 
         {/* Appearance */}
         <div>
@@ -242,63 +238,6 @@ export function SettingsView() {
             }
           />
           {notificationsEnabled && <NotificationRulesSection />}
-          {notificationsEnabled && (
-            <div className="mt-3 px-1">
-              <div className={`flex items-center gap-2 mb-2`}>
-                <div
-                  className={`h-7 w-7 rounded-full ${
-                    darkMode ? 'bg-teal-900/50' : 'bg-teal-100'
-                  } flex items-center justify-center text-teal-500`}
-                >
-                  <PhoneIcon />
-                </div>
-                <p className={`text-sm font-medium ${theme.text}`}>
-                  SMS Alerts
-                </p>
-              </div>
-              <p className={`text-xs ${theme.textMuted} mb-2 px-1`}>
-                Get text messages when notification rules match. Leave empty to disable SMS.
-              </p>
-              <div className="flex gap-2">
-                <input
-                  type="tel"
-                  value={phoneInput}
-                  onChange={(e) => setPhoneInput(e.target.value)}
-                  placeholder="+1 (555) 123-4567"
-                  className={`flex-1 px-3 py-2 rounded-xl text-sm border ${
-                    darkMode
-                      ? 'bg-white/5 border-white/10 text-white placeholder-gray-500 focus:border-violet-500'
-                      : 'bg-gray-50 border-gray-200 text-gray-900 placeholder-gray-400 focus:border-violet-500'
-                  } outline-none transition-colors`}
-                />
-                <button
-                  onClick={() => {
-                    // Format: strip non-digits, ensure +1 prefix for US numbers
-                    let formatted = phoneInput.replace(/[^\d+]/g, '')
-                    if (formatted && !formatted.startsWith('+')) {
-                      formatted = '+1' + formatted
-                    }
-                    setSmsPhoneNumber(formatted)
-                    setPhoneInput(formatted)
-                    setPhoneSaved(true)
-                    setTimeout(() => setPhoneSaved(false), 1500)
-                  }}
-                  className={`px-4 py-2 rounded-xl text-xs font-medium transition-all ${
-                    darkMode
-                      ? 'bg-violet-600 text-white hover:bg-violet-500'
-                      : 'bg-violet-500 text-white hover:bg-violet-600'
-                  }`}
-                >
-                  {phoneSaved ? 'Saved!' : 'Save'}
-                </button>
-              </div>
-              {smsPhoneNumber && (
-                <p className={`text-xs ${theme.textMuted} mt-1.5 px-1`}>
-                  SMS alerts will be sent to {smsPhoneNumber}
-                </p>
-              )}
-            </div>
-          )}
         </div>
 
         {/* AI Personality */}
