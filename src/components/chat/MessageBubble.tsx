@@ -6,6 +6,31 @@ import { useChatStore } from '@/stores/chatStore'
 import { api } from '@/api/client'
 import { SendIcon } from '@/icons'
 
+const CATEGORY_COLORS: Record<string, { bg: string; text: string; darkBg: string; darkText: string }> = {
+  Important: { bg: 'bg-red-100', text: 'text-red-700', darkBg: 'bg-red-500/20', darkText: 'text-red-400' },
+  'Work/School': { bg: 'bg-blue-100', text: 'text-blue-700', darkBg: 'bg-blue-500/20', darkText: 'text-blue-400' },
+  Social: { bg: 'bg-green-100', text: 'text-green-700', darkBg: 'bg-green-500/20', darkText: 'text-green-400' },
+  Promotions: { bg: 'bg-yellow-100', text: 'text-yellow-700', darkBg: 'bg-yellow-500/20', darkText: 'text-yellow-400' },
+  Updates: { bg: 'bg-purple-100', text: 'text-purple-700', darkBg: 'bg-purple-500/20', darkText: 'text-purple-400' },
+  Finance: { bg: 'bg-orange-100', text: 'text-orange-700', darkBg: 'bg-orange-500/20', darkText: 'text-orange-400' },
+  Personal: { bg: 'bg-pink-100', text: 'text-pink-700', darkBg: 'bg-pink-500/20', darkText: 'text-pink-400' },
+}
+
+function CategoryTag({ category, darkMode }: { category: string; darkMode: boolean }) {
+  const colors = CATEGORY_COLORS[category]
+  if (!colors) return <strong>[{category}]</strong>
+
+  return (
+    <span
+      className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold ${
+        darkMode ? `${colors.darkBg} ${colors.darkText}` : `${colors.bg} ${colors.text}`
+      }`}
+    >
+      {category}
+    </span>
+  )
+}
+
 interface EmailAction {
   action: 'send' | 'draft'
   to: string
@@ -83,6 +108,21 @@ function getContextualChips(content: string): { label: string; message: string }
 
   if (senders.length > 0 && chips.length < 3) {
     chips.push({ label: 'Draft follow-up', message: `Draft a follow-up email to ${senders[0]}` })
+  }
+
+  // Add category-based chip if multiple categories detected
+  const categoryPattern = /\*\*\[(\w+(?:\/\w+)?)\]\*\*/g
+  const foundCategories = new Set<string>()
+  let catMatch
+  while ((catMatch = categoryPattern.exec(content)) !== null) {
+    foundCategories.add(catMatch[1]!)
+  }
+  if (foundCategories.size > 1 && chips.length < 3) {
+    const firstCat = [...foundCategories][0]!
+    chips.push({
+      label: `Show ${firstCat} only`,
+      message: `Show me only my ${firstCat.toLowerCase()} emails`,
+    })
   }
 
   if (chips.length < 3) {
@@ -265,7 +305,26 @@ export function MessageBubble({ role, content, showSuggestions = false }: Messag
             >
               {textParts.map((part, i) => (
                 <span key={i}>
-                  {part.trim() && <ReactMarkdown>{part}</ReactMarkdown>}
+                  {part.trim() && (
+                    <ReactMarkdown
+                      components={{
+                        strong: ({ children }) => {
+                          const text = typeof children === 'string'
+                            ? children
+                            : Array.isArray(children)
+                              ? children.map(c => (typeof c === 'string' ? c : '')).join('')
+                              : String(children || '')
+                          const categoryMatch = text.match(/^\[(\w+(?:\/\w+)?)\]$/)
+                          if (categoryMatch && CATEGORY_COLORS[categoryMatch[1]!]) {
+                            return <CategoryTag category={categoryMatch[1]!} darkMode={darkMode} />
+                          }
+                          return <strong>{children}</strong>
+                        },
+                      }}
+                    >
+                      {part}
+                    </ReactMarkdown>
+                  )}
                   {actions[i] && <EmailActionCard emailAction={actions[i]} />}
                 </span>
               ))}

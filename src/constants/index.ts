@@ -43,7 +43,7 @@ export const smartSuggestions = [
   { label: 'Summarize my inbox', icon: '📬' },
   { label: 'Unread emails today', icon: '📩' },
   { label: 'What needs a reply?', icon: '↩️' },
-  { label: 'Any urgent emails?', icon: '🔥' },
+  { label: 'Show my promotions', icon: '🏷️' },
 ]
 
 export function getRandomGreeting(): string {

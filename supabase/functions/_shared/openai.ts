@@ -5,6 +5,92 @@ interface ChatMessage {
   content: string
 }
 
+export const EMAIL_CATEGORIES = {
+  important: { label: "Important", color: "red" },
+  work: { label: "Work/School", color: "blue" },
+  social: { label: "Social", color: "green" },
+  promotions: { label: "Promotions", color: "yellow" },
+  updates: { label: "Updates", color: "purple" },
+  finance: { label: "Finance", color: "orange" },
+  personal: { label: "Personal", color: "pink" },
+} as const
+
+export type EmailCategory = keyof typeof EMAIL_CATEGORIES
+
+interface EmailForCategorization {
+  id: string
+  from: string
+  subject: string
+  snippet?: string
+}
+
+export async function categorizeEmails(
+  emails: EmailForCategorization[]
+): Promise<Record<string, EmailCategory>> {
+  if (!OPENAI_API_KEY || emails.length === 0) return {}
+
+  const emailSummaries = emails
+    .map(
+      (e, i) =>
+        `${i + 1}. [ID:${e.id}] From: ${e.from} | Subject: ${e.subject} | Snippet: ${(e.snippet || "").substring(0, 100)}`
+    )
+    .join("\n")
+
+  try {
+    const response = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${OPENAI_API_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "gpt-4o-mini",
+        messages: [
+          {
+            role: "system",
+            content: `Categorize each email into exactly one category. Categories: important, work, social, promotions, updates, finance, personal.
+Return JSON: { "categories": { "<email_id>": "<category>", ... } }
+Rules:
+- "important": urgent, time-sensitive, requires immediate action
+- "work": work/school/academic/professional related
+- "social": social media notifications, friend messages, group chats
+- "promotions": marketing, sales, deals, newsletters, advertising
+- "updates": automated notifications, shipping, account updates, confirmations
+- "finance": bills, banking, payments, invoices, receipts
+- "personal": personal correspondence not fitting other categories`,
+          },
+          { role: "user", content: emailSummaries },
+        ],
+        max_tokens: 500,
+        temperature: 0,
+        response_format: { type: "json_object" },
+      }),
+    })
+
+    if (!response.ok) {
+      console.error("[Categorize] OpenAI API error:", response.status)
+      return {}
+    }
+
+    const data = await response.json()
+    const parsed = JSON.parse(data.choices[0]?.message?.content || "{}")
+    const categories = parsed.categories || {}
+
+    // Validate categories
+    const validCategories = Object.keys(EMAIL_CATEGORIES)
+    const result: Record<string, EmailCategory> = {}
+    for (const [id, cat] of Object.entries(categories)) {
+      if (validCategories.includes(cat as string)) {
+        result[id] = cat as EmailCategory
+      }
+    }
+    return result
+  } catch (err) {
+    console.error("[Categorize] Failed:", err instanceof Error ? err.message : "unknown")
+    return {}
+  }
+}
+
 export const SYSTEM_PROMPT = `You are Spotlight, an intelligent email assistant. Your job is to help users quickly find information, understand their emails, stay on top of their inbox, and compose or reply to emails.
 
 ## Your Capabilities
@@ -64,6 +150,14 @@ When the user asks you to write, draft, reply to, or send an email, include a sp
 8. **CRITICAL: Only reference emails provided below** - You MUST only discuss emails that are explicitly provided in the "User's Emails" section below. NEVER fabricate, invent, or hallucinate email content. If no emails are provided, tell the user you don't have access to their inbox right now.
 
 9. **Quote real data** - When referencing emails, use actual sender names, subjects, dates, and content from the provided data. Never make up email details.
+
+## Email Categories
+
+Each email in your context may have a **Category** field (e.g., Important, Work/School, Social, Promotions, Updates, Finance, Personal). Use these when relevant:
+- When listing emails, include the category as a bold tag before the email info: **[Work/School]**, **[Promotions]**, **[Finance]**, etc.
+- When users ask about a specific category (e.g., "show my promotions", "any work emails?"), filter and show only emails matching that category.
+- When summarizing the inbox, you can group emails by category for better organization.
+- Always use the exact category names in the **[CategoryName]** format so they render as colored tags.
 
 Remember: Users are busy. Help them get the info they need fast. Only reference real email data provided to you.`
 
@@ -140,7 +234,8 @@ export function buildEmailContext(
     date: string
     snippet?: string
     body?: string
-  }>
+  }>,
+  categories?: Record<string, string>
 ): string {
   if (emails.length === 0) return ""
 
@@ -163,6 +258,11 @@ export function buildEmailContext(
 
     context += `### Email ${i + 1}\n`
     if (email.id) context += `- **Message ID:** ${email.id}\n`
+    if (email.id && categories?.[email.id]) {
+      const catKey = categories[email.id]
+      const catLabel = EMAIL_CATEGORIES[catKey as EmailCategory]?.label || catKey
+      context += `- **Category:** ${catLabel}\n`
+    }
     context += `- **From:** ${fromClean}\n`
     if (email.to) context += `- **To:** ${email.to}\n`
     context += `- **Subject:** ${email.subject || "(no subject)"}\n`
@@ -205,6 +305,8 @@ Rules:
 - If the user asks about emails from a person, about a topic, or wants to search: { "action": "search", "query": "<gmail search query>", "maxResults": 20 }
 - If the user wants recent/latest emails or a general summary: { "action": "recent", "maxResults": 50 }
 - If the user wants to reply to or compose an email about a specific person/thread: { "action": "search", "query": "<gmail query to find relevant emails>", "maxResults": 10 }
+- If the user asks about a category of emails (promotions, social, work, school, finance, important, updates, personal): { "action": "recent", "maxResults": 50 }
+  - Category keywords: "promotional", "promotions", "social", "work", "school", "financial", "finance", "important", "urgent", "updates", "personal", "newsletters"
 - If the user is asking a follow-up, composing from scratch, or a general question: { "action": "none" }
 
 Gmail search query syntax: "from:name", "subject:topic", "after:2024/01/01", free text, etc.`,
