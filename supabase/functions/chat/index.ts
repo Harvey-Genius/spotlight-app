@@ -9,6 +9,7 @@ import {
   streamChatCompletion,
   buildEmailContext,
   parseUserIntent,
+  categorizeEmails,
 } from "../_shared/openai.ts"
 
 serve(async (req) => {
@@ -130,7 +131,23 @@ serve(async (req) => {
         )
       }
 
-      emailContext = buildEmailContext(emails.slice(0, 25))
+      // Categorize emails with AI (non-blocking — if it fails, emails display without categories)
+      let categories: Record<string, string> = {}
+      try {
+        const emailsToProcess = emails.slice(0, 25)
+        categories = await categorizeEmails(
+          emailsToProcess.filter((e) => e.id).map((e) => ({
+            id: e.id!,
+            from: e.from,
+            subject: e.subject,
+            snippet: e.snippet,
+          }))
+        )
+      } catch (catErr) {
+        console.error("[Chat] Categorization failed:", catErr instanceof Error ? catErr.message : "unknown")
+      }
+
+      emailContext = buildEmailContext(emails.slice(0, 25), categories)
     } catch (err) {
       console.error("[Chat] Email fetch failed:", err instanceof Error ? err.message : "unknown")
       emailContext = "\n\n---\n**Note:** I was unable to access the user's Gmail inbox due to a technical error. Please let the user know you couldn't retrieve their emails and suggest they try again.\n---\n"
