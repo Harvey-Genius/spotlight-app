@@ -3,7 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Spotlight — AI Email Assistant</title>
+  <title>Spotlight Email Assistant — AI-Powered Gmail Sidebar</title>
+  <meta name="description" content="Spotlight Email Assistant is a Chrome extension that brings AI to your Gmail inbox. Search, summarize, categorize, and reply to emails through a chat sidebar." />
   <link rel="icon" type="image/png" href="/icon-128.png" />
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
@@ -17,21 +18,30 @@
       overflow-x: hidden;
     }
 
-    /* Gradient background */
     .bg-glow {
       position: fixed;
-      top: -40%;
+      top: -30%;
       left: 50%;
       transform: translateX(-50%);
-      width: 800px;
-      height: 800px;
-      background: radial-gradient(circle, rgba(139, 92, 246, 0.15) 0%, rgba(99, 102, 241, 0.05) 40%, transparent 70%);
+      width: 900px;
+      height: 900px;
+      background: radial-gradient(circle, rgba(139, 92, 246, 0.12) 0%, rgba(59, 130, 246, 0.06) 35%, transparent 65%);
+      pointer-events: none;
+      z-index: 0;
+    }
+    .bg-glow-2 {
+      position: fixed;
+      bottom: -40%;
+      right: -20%;
+      width: 600px;
+      height: 600px;
+      background: radial-gradient(circle, rgba(99, 102, 241, 0.08) 0%, transparent 60%);
       pointer-events: none;
       z-index: 0;
     }
 
     .container {
-      max-width: 720px;
+      max-width: 760px;
       margin: 0 auto;
       padding: 0 1.5rem;
       position: relative;
@@ -52,6 +62,7 @@
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
     }
+    .nav-links { display: flex; gap: 1.25rem; }
     .nav-links a {
       color: #a1a1aa;
       text-decoration: none;
@@ -64,10 +75,12 @@
     /* Hero */
     .hero {
       text-align: center;
-      padding: 6rem 0 4rem;
+      padding: 5rem 0 4rem;
     }
     .badge {
-      display: inline-block;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
       padding: 0.375rem 1rem;
       border-radius: 999px;
       border: 1px solid rgba(139, 92, 246, 0.3);
@@ -78,11 +91,22 @@
       letter-spacing: 0.025em;
       margin-bottom: 1.5rem;
     }
+    .badge-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: #22c55e;
+      animation: pulse-dot 2s infinite;
+    }
+    @keyframes pulse-dot {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.4; }
+    }
     h1 {
-      font-size: 3.25rem;
+      font-size: 3.5rem;
       font-weight: 800;
-      line-height: 1.1;
-      letter-spacing: -0.03em;
+      line-height: 1.08;
+      letter-spacing: -0.035em;
       margin-bottom: 1.25rem;
     }
     h1 .gradient {
@@ -94,7 +118,7 @@
       font-size: 1.125rem;
       color: #a1a1aa;
       line-height: 1.7;
-      max-width: 520px;
+      max-width: 540px;
       margin: 0 auto 2.5rem;
     }
 
@@ -106,11 +130,11 @@
       align-items: center;
       flex-wrap: wrap;
     }
-    .btn-primary {
+    .btn-chrome {
       display: inline-flex;
       align-items: center;
-      gap: 0.5rem;
-      padding: 0.875rem 2rem;
+      gap: 0.625rem;
+      padding: 0.9rem 2rem;
       background: linear-gradient(135deg, #8b5cf6, #6366f1);
       color: #fff;
       font-size: 0.938rem;
@@ -122,16 +146,16 @@
       transition: all 0.2s;
       box-shadow: 0 4px 24px rgba(139, 92, 246, 0.3);
     }
-    .btn-primary:hover {
+    .btn-chrome:hover {
       transform: translateY(-1px);
-      box-shadow: 0 6px 32px rgba(139, 92, 246, 0.4);
+      box-shadow: 0 6px 32px rgba(139, 92, 246, 0.45);
     }
-    .btn-primary svg { width: 18px; height: 18px; }
+    .btn-chrome svg { width: 20px; height: 20px; }
     .btn-secondary {
       display: inline-flex;
       align-items: center;
       gap: 0.5rem;
-      padding: 0.875rem 2rem;
+      padding: 0.9rem 2rem;
       background: rgba(255,255,255,0.05);
       color: #d4d4d8;
       font-size: 0.938rem;
@@ -147,9 +171,35 @@
       color: #fafafa;
     }
 
+    /* Social proof */
+    .social-proof {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.75rem;
+      margin-top: 2rem;
+      color: #71717a;
+      font-size: 0.8125rem;
+    }
+    .chrome-icon { width: 18px; height: 18px; opacity: 0.6; }
+
+    /* NEW tag */
+    .new-tag {
+      display: inline-flex;
+      align-items: center;
+      padding: 0.2rem 0.5rem;
+      border-radius: 6px;
+      background: rgba(34, 197, 94, 0.15);
+      color: #4ade80;
+      font-size: 0.625rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
     /* Features */
     .features {
-      padding: 4rem 0;
+      padding: 4rem 0 2rem;
     }
     .features-label {
       text-align: center;
@@ -170,45 +220,73 @@
       border-radius: 16px;
       background: rgba(255,255,255,0.03);
       border: 1px solid rgba(255,255,255,0.06);
-      transition: all 0.2s;
+      transition: all 0.25s;
     }
     .feature-card:hover {
       background: rgba(255,255,255,0.05);
       border-color: rgba(139, 92, 246, 0.2);
+      transform: translateY(-2px);
+    }
+    .feature-header {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      margin-bottom: 0.5rem;
     }
     .feature-icon {
-      width: 40px;
-      height: 40px;
+      width: 36px;
+      height: 36px;
       border-radius: 10px;
       background: rgba(139, 92, 246, 0.1);
       display: flex;
       align-items: center;
       justify-content: center;
-      margin-bottom: 0.75rem;
-      font-size: 1.125rem;
+      font-size: 1rem;
     }
     .feature-card h3 {
       font-size: 0.938rem;
       font-weight: 600;
-      margin-bottom: 0.375rem;
     }
     .feature-card p {
       font-size: 0.8125rem;
       color: #71717a;
-      line-height: 1.5;
+      line-height: 1.6;
     }
 
-    /* Install steps */
-    .install {
-      padding: 4rem 0;
+    /* Category pills demo */
+    .category-pills {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.375rem;
+      margin-top: 0.75rem;
     }
-    .install h2 {
+    .cat-pill {
+      display: inline-flex;
+      align-items: center;
+      padding: 0.2rem 0.6rem;
+      border-radius: 999px;
+      font-size: 0.6875rem;
+      font-weight: 600;
+    }
+    .cat-work { background: rgba(59, 130, 246, 0.15); color: #60a5fa; }
+    .cat-promo { background: rgba(234, 179, 8, 0.15); color: #facc15; }
+    .cat-finance { background: rgba(249, 115, 22, 0.15); color: #fb923c; }
+    .cat-social { background: rgba(34, 197, 94, 0.15); color: #4ade80; }
+    .cat-important { background: rgba(239, 68, 68, 0.15); color: #f87171; }
+    .cat-updates { background: rgba(168, 85, 247, 0.15); color: #c084fc; }
+    .cat-personal { background: rgba(236, 72, 153, 0.15); color: #f472b6; }
+
+    /* How it works */
+    .how-it-works {
+      padding: 3rem 0 4rem;
+    }
+    .how-it-works h2 {
       text-align: center;
       font-size: 1.75rem;
       font-weight: 700;
       margin-bottom: 0.5rem;
     }
-    .install .sub {
+    .how-it-works .sub {
       text-align: center;
       color: #71717a;
       font-size: 0.875rem;
@@ -251,14 +329,6 @@
       color: #71717a;
       line-height: 1.5;
     }
-    .step-text code {
-      background: rgba(139, 92, 246, 0.1);
-      color: #a78bfa;
-      padding: 0.125rem 0.5rem;
-      border-radius: 6px;
-      font-size: 0.75rem;
-      font-family: 'SF Mono', monospace;
-    }
 
     /* Feedback */
     .feedback {
@@ -287,9 +357,7 @@
       display: flex;
       gap: 0.75rem;
     }
-    .feedback-row input {
-      flex: 1;
-    }
+    .feedback-row input { flex: 1; }
     .feedback-form input,
     .feedback-form textarea {
       width: 100%;
@@ -304,17 +372,10 @@
       transition: border-color 0.2s;
     }
     .feedback-form input::placeholder,
-    .feedback-form textarea::placeholder {
-      color: #52525b;
-    }
+    .feedback-form textarea::placeholder { color: #52525b; }
     .feedback-form input:focus,
-    .feedback-form textarea:focus {
-      border-color: rgba(139, 92, 246, 0.5);
-    }
-    .feedback-form textarea {
-      resize: vertical;
-      min-height: 100px;
-    }
+    .feedback-form textarea:focus { border-color: rgba(139, 92, 246, 0.5); }
+    .feedback-form textarea { resize: vertical; min-height: 100px; }
     .feedback-form button {
       padding: 0.75rem 2rem;
       background: linear-gradient(135deg, #8b5cf6, #6366f1);
@@ -363,93 +424,132 @@
     }
     footer a:hover { color: #a78bfa; }
 
-    /* Responsive */
     @media (max-width: 600px) {
       h1 { font-size: 2.25rem; }
       .subtitle { font-size: 1rem; }
       .feature-grid { grid-template-columns: 1fr; }
       .cta-group { flex-direction: column; }
+      .feedback-row { flex-direction: column; }
     }
   </style>
 </head>
 <body>
   <div class="bg-glow"></div>
+  <div class="bg-glow-2"></div>
 
   <div class="container">
     <nav>
       <div class="logo">Spotlight Email Assistant</div>
-      <div class="nav-links" style="display:flex;gap:1.25rem;">
+      <div class="nav-links">
+        <a href="#features">Features</a>
         <a href="#feedback">Feedback</a>
-        <a href="/privacy.html">Privacy Policy</a>
+        <a href="/privacy.html">Privacy</a>
         <a href="/terms.html">Terms</a>
       </div>
     </nav>
 
     <section class="hero">
-      <div class="badge">Chrome Extension</div>
-      <h1>Spotlight Email Assistant</h1>
-      <p class="subtitle" style="margin-top: 0.75rem;">
-        Spotlight Email Assistant is an AI-powered Chrome extension that connects to your Gmail inbox.
-        Search emails, get summaries, draft replies, and send messages — all through a conversational chat interface in your browser sidebar.
+      <div class="badge">
+        <span class="badge-dot"></span>
+        Available on Chrome Web Store
+      </div>
+      <h1>Your inbox,<br/><span class="gradient">powered by AI</span></h1>
+      <p class="subtitle">
+        Spotlight is a Chrome extension that lives in your browser sidebar. Search emails, get AI summaries, auto-categorize your inbox, draft replies, and send messages — all through a simple chat.
       </p>
       <div class="cta-group">
-        <a href="/spotlight-extension.zip" class="btn-primary" download>
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-          Download Extension
+        <a href="https://chromewebstore.google.com/detail/spotlight-email-assistant/phichhkpcjpbeneoggmmhndjjbkbbfdk" class="btn-chrome" target="_blank" rel="noopener">
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8z"/><circle cx="12" cy="12" r="4"/></svg>
+          Add to Chrome — Free
         </a>
-        <a href="#install" class="btn-secondary">How to Install</a>
+        <a href="#features" class="btn-secondary">See Features</a>
+      </div>
+      <div class="social-proof">
+        <span>Free &bull; No credit card required &bull; Works with Gmail</span>
       </div>
     </section>
 
-    <section class="features">
-      <p class="features-label">What you can do</p>
+    <section class="features" id="features">
+      <p class="features-label">Everything you need</p>
       <div class="feature-grid">
         <div class="feature-card">
-          <div class="feature-icon">💬</div>
-          <h3>Chat with your inbox</h3>
-          <p>Ask questions like "What did John send me last week?" and get instant answers.</p>
+          <div class="feature-header">
+            <div class="feature-icon">💬</div>
+            <h3>Chat with your inbox</h3>
+          </div>
+          <p>Ask anything in plain English. "What did Sarah send about the project?" — get instant, accurate answers from your real emails.</p>
         </div>
         <div class="feature-card">
-          <div class="feature-icon">✉️</div>
-          <h3>Send & draft emails</h3>
-          <p>Compose replies and new emails right from the chat. Send or save as draft with one click.</p>
+          <div class="feature-header">
+            <div class="feature-icon">🏷️</div>
+            <h3>Smart categorization</h3>
+            <span class="new-tag">New</span>
+          </div>
+          <p>Every email is automatically tagged by AI. Filter by category with a simple ask.</p>
+          <div class="category-pills">
+            <span class="cat-pill cat-work">Work/School</span>
+            <span class="cat-pill cat-promo">Promotions</span>
+            <span class="cat-pill cat-finance">Finance</span>
+            <span class="cat-pill cat-social">Social</span>
+            <span class="cat-pill cat-important">Important</span>
+            <span class="cat-pill cat-updates">Updates</span>
+            <span class="cat-pill cat-personal">Personal</span>
+          </div>
         </div>
         <div class="feature-card">
-          <div class="feature-icon">🔔</div>
-          <h3>Smart notifications</h3>
-          <p>Set custom rules to get notified when specific people email you or keywords appear.</p>
+          <div class="feature-header">
+            <div class="feature-icon">✉️</div>
+            <h3>Send & draft emails</h3>
+          </div>
+          <p>Compose replies and new emails right from the chat. Send instantly or save as a draft with one click.</p>
         </div>
         <div class="feature-card">
-          <div class="feature-icon">🌙</div>
-          <h3>Dark mode & more</h3>
-          <p>Customize your experience with dark mode, AI personality settings, and conversation history.</p>
+          <div class="feature-header">
+            <div class="feature-icon">🔔</div>
+            <h3>Smart notifications</h3>
+          </div>
+          <p>Set custom rules to get notified when specific people email you or certain keywords appear.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-header">
+            <div class="feature-icon">📋</div>
+            <h3>Summaries & action items</h3>
+          </div>
+          <p>Get concise summaries of long threads. Extract deadlines, tasks, and key details in seconds.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-header">
+            <div class="feature-icon">🌙</div>
+            <h3>Dark mode & customization</h3>
+          </div>
+          <p>Dark mode, custom AI personality, conversation history, and more. Make Spotlight yours.</p>
         </div>
       </div>
     </section>
 
-    <section class="install" id="install">
-      <h2>Install in 3 steps</h2>
-      <p class="sub">Takes about 30 seconds. No store needed.</p>
+    <section class="how-it-works" id="how-it-works">
+      <h2>Up and running in seconds</h2>
+      <p class="sub">Install from the Chrome Web Store. No developer mode required.</p>
       <div class="steps">
         <div class="step">
           <div class="step-num">1</div>
           <div class="step-text">
-            <h3>Download & unzip</h3>
-            <p>Click the download button above. Unzip the file — you'll get a folder with the extension files.</p>
+            <h3>Install from Chrome Web Store</h3>
+            <p>Click "Add to Chrome" above. The extension installs automatically — no unzipping or developer mode needed.</p>
           </div>
         </div>
         <div class="step">
           <div class="step-num">2</div>
           <div class="step-text">
-            <h3>Open Chrome Extensions</h3>
-            <p>Go to <code>chrome://extensions</code> in your browser. Enable <strong>Developer mode</strong> (toggle in the top right).</p>
+            <h3>Sign in with Google</h3>
+            <p>Click the Spotlight icon in your browser toolbar and sign in. We'll securely connect to your Gmail — your data stays private.</p>
           </div>
         </div>
         <div class="step">
           <div class="step-num">3</div>
           <div class="step-text">
-            <h3>Load the extension</h3>
-            <p>Click <strong>"Load unpacked"</strong> and select the unzipped folder. Spotlight will appear in your extensions bar — click it to open the side panel.</p>
+            <h3>Start chatting</h3>
+            <p>Open the sidebar and ask anything. "Summarize my inbox", "Show my promotions", "Reply to John" — Spotlight handles it all.</p>
           </div>
         </div>
       </div>
@@ -470,7 +570,7 @@
     </section>
 
     <footer>
-      <p>Spotlight Email Assistant &mdash; Built by Liam Harvey &nbsp;·&nbsp; <a href="/privacy.html">Privacy Policy</a> &nbsp;·&nbsp; <a href="/terms.html">Terms of Service</a></p>
+      <p>Spotlight Email Assistant &mdash; Built by Liam Harvey &nbsp;&bull;&nbsp; <a href="/privacy.html">Privacy Policy</a> &nbsp;&bull;&nbsp; <a href="/terms.html">Terms of Service</a></p>
     </footer>
   </div>
 
@@ -499,7 +599,7 @@
         });
 
         if (res.ok) {
-          msg.textContent = 'Thanks for your feedback! We\'ll get back to you.';
+          msg.textContent = "Thanks for your feedback! We'll get back to you.";
           msg.style.display = 'block';
           msg.style.color = '#a78bfa';
           document.getElementById('fb-name').value = '';
