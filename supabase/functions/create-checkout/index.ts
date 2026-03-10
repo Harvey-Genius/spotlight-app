@@ -65,8 +65,8 @@ serve(async (req) => {
       "line_items[0][price]": STRIPE_PRICE_ID,
       "line_items[0][quantity]": "1",
       mode: "subscription",
-      success_url: "https://spotlight-fresh.vercel.app/success.html",
-      cancel_url: "https://spotlight-fresh.vercel.app/",
+      success_url: "https://spotlight-email-ai.com/success.html",
+      cancel_url: "https://spotlight-email-ai.com/",
       "metadata[user_id]": auth.userId,
       "subscription_data[metadata][user_id]": auth.userId,
     })

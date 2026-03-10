@@ -1,4 +1,6 @@
 const ALLOWED_ORIGINS = [
+  "https://spotlight-email-ai.com",
+  "https://www.spotlight-email-ai.com",
   "https://spotlight-fresh.vercel.app",
 ]
 

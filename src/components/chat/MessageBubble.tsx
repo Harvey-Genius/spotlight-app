@@ -2,6 +2,7 @@ import { useState } from 'react'
 import ReactMarkdown from 'react-markdown'
 import { useTheme } from '@/hooks/useTheme'
 import { useSettingsStore } from '@/stores/settingsStore'
+import { useChatStore } from '@/stores/chatStore'
 import { api } from '@/api/client'
 import { SendIcon } from '@/icons'
 
@@ -39,6 +40,56 @@ function parseEmailActions(content: string): {
 
   textParts.push(content.slice(lastIndex))
   return { textParts, actions }
+}
+
+/** Extract sender first names from an assistant message that references emails */
+function extractSenderNames(content: string): string[] {
+  const names: string[] = []
+  // Match "From: Name" or "**From:** Name" patterns
+  const fromPattern = /\*?\*?From:?\*?\*?\s*([A-Z][a-zA-Z]+(?:\s+[A-Z][a-zA-Z]+)?)/g
+  let match
+  while ((match = fromPattern.exec(content)) !== null) {
+    const name = match[1]!.split(/\s/)[0]! // First name only
+    if (name.length > 1 && !names.includes(name)) {
+      names.push(name)
+    }
+  }
+  return names.slice(0, 3) // Max 3 names
+}
+
+/** Check if a message discusses emails */
+function isEmailRelated(content: string): boolean {
+  const indicators = ['**From:**', '**Subject:**', '**Date:**', 'Email ', 'email from', 'sent you', 'inbox']
+  return indicators.some((i) => content.includes(i))
+}
+
+/** Generate contextual suggestion chips based on message content */
+function getContextualChips(content: string): { label: string; message: string }[] {
+  const chips: { label: string; message: string }[] = []
+  const senders = extractSenderNames(content)
+
+  // Add reply chips for each sender
+  for (const name of senders.slice(0, 2)) {
+    chips.push({
+      label: `Reply to ${name}`,
+      message: `Draft a reply to ${name}'s email`,
+    })
+  }
+
+  // Add contextual chips based on content
+  if (content.includes('thread') || content.includes('conversation')) {
+    chips.push({ label: 'Summarize thread', message: 'Summarize this entire email thread' })
+  }
+
+  if (senders.length > 0 && chips.length < 3) {
+    chips.push({ label: 'Draft follow-up', message: `Draft a follow-up email to ${senders[0]}` })
+  }
+
+  if (chips.length < 3) {
+    chips.push({ label: 'Tell me more', message: 'Give me more details about these emails' })
+  }
+
+  return chips.slice(0, 3)
 }
 
 function EmailActionCard({ emailAction }: { emailAction: EmailAction }) {
@@ -171,11 +222,14 @@ function EmailActionCard({ emailAction }: { emailAction: EmailAction }) {
 interface MessageBubbleProps {
   role: 'user' | 'assistant'
   content: string
+  showSuggestions?: boolean
 }
 
-export function MessageBubble({ role, content }: MessageBubbleProps) {
+export function MessageBubble({ role, content, showSuggestions = false }: MessageBubbleProps) {
   const theme = useTheme()
   const darkMode = useSettingsStore((s) => s.darkMode)
+  const sendMessage = useChatStore((s) => s.sendMessage)
+  const isStreaming = useChatStore((s) => s.isStreaming)
 
   // Parse email actions from assistant messages
   const hasEmailAction = role === 'assistant' && content.includes('```email-action')
@@ -183,32 +237,57 @@ export function MessageBubble({ role, content }: MessageBubbleProps) {
     ? parseEmailActions(content)
     : { textParts: [content], actions: [] }
 
+  // Generate contextual chips for email-related responses
+  const showChips = showSuggestions && role === 'assistant' && !isStreaming && isEmailRelated(content)
+  const chips = showChips ? getContextualChips(content) : []
+
   return (
     <div
       className={`flex ${role === 'user' ? 'justify-end' : 'justify-start'} animate-message-in`}
     >
-      <div
-        className={`max-w-[85%] rounded-2xl px-4 py-3 ${
-          role === 'user'
-            ? `bg-gradient-to-br ${theme.gradient} text-white shadow-md`
-            : `${darkMode ? 'bg-gray-800' : 'bg-gray-100'} ${theme.text}`
-        }`}
-      >
-        {role === 'user' ? (
-          <p className="text-sm leading-relaxed whitespace-pre-wrap">
-            {content}
-          </p>
-        ) : (
-          <div
-            className={`text-sm leading-relaxed prose prose-sm max-w-none prose-p:my-2.5 prose-ul:my-3 prose-ol:my-3 prose-li:my-2 prose-headings:my-3 prose-strong:font-semibold prose-hr:my-4 prose-hr:border-gray-200 ${
-              darkMode ? 'prose-invert prose-hr:border-gray-600' : ''
-            }`}
-          >
-            {textParts.map((part, i) => (
-              <span key={i}>
-                {part.trim() && <ReactMarkdown>{part}</ReactMarkdown>}
-                {actions[i] && <EmailActionCard emailAction={actions[i]} />}
-              </span>
+      <div className={`max-w-[85%] ${role === 'user' ? '' : 'w-full'}`}>
+        <div
+          className={`rounded-2xl px-4 py-3 ${
+            role === 'user'
+              ? `bg-gradient-to-br ${theme.gradient} text-white shadow-md`
+              : `${darkMode ? 'bg-gray-800' : 'bg-gray-100'} ${theme.text}`
+          }`}
+        >
+          {role === 'user' ? (
+            <p className="text-sm leading-relaxed whitespace-pre-wrap">
+              {content}
+            </p>
+          ) : (
+            <div
+              className={`text-sm leading-relaxed prose prose-sm max-w-none prose-p:my-2.5 prose-ul:my-3 prose-ol:my-3 prose-li:my-2 prose-headings:my-3 prose-strong:font-semibold prose-hr:my-4 prose-hr:border-gray-200 ${
+                darkMode ? 'prose-invert prose-hr:border-gray-600' : ''
+              }`}
+            >
+              {textParts.map((part, i) => (
+                <span key={i}>
+                  {part.trim() && <ReactMarkdown>{part}</ReactMarkdown>}
+                  {actions[i] && <EmailActionCard emailAction={actions[i]} />}
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Contextual suggestion chips */}
+        {chips.length > 0 && (
+          <div className="flex flex-wrap gap-1.5 mt-2 ml-1">
+            {chips.map((chip) => (
+              <button
+                key={chip.label}
+                onClick={() => sendMessage(chip.message)}
+                className={`px-2.5 py-1.5 rounded-lg text-[11px] font-medium transition-all ${
+                  darkMode
+                    ? 'bg-violet-500/15 text-violet-300 hover:bg-violet-500/25 border border-violet-500/20'
+                    : 'bg-violet-50 text-violet-600 hover:bg-violet-100 border border-violet-200'
+                }`}
+              >
+                {chip.label}
+              </button>
             ))}
           </div>
         )}

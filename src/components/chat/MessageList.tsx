@@ -13,13 +13,23 @@ export function MessageList() {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages, streamingContent])
 
+  // Find the index of the last assistant message
+  let lastAssistantIdx = -1
+  for (let i = messages.length - 1; i >= 0; i--) {
+    if (messages[i]?.role === 'assistant') {
+      lastAssistantIdx = i
+      break
+    }
+  }
+
   return (
     <div className="space-y-4">
-      {messages.map((message) => (
+      {messages.map((message, idx) => (
         <MessageBubble
           key={message.id}
           role={message.role}
           content={message.content}
+          showSuggestions={idx === lastAssistantIdx && !isStreaming}
         />
       ))}
       {isStreaming && streamingContent && (

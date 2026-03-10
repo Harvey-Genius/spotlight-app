@@ -6,14 +6,12 @@ interface SettingsState {
   darkMode: boolean
   notificationsEnabled: boolean
   aiPersonality: string
-  smsPhoneNumber: string
   subscriptionTier: string
   loaded: boolean
   loadSettings: () => Promise<void>
   setDarkMode: (value: boolean) => void
   setNotifications: (value: boolean) => void
   setAiPersonality: (value: string) => void
-  setSmsPhoneNumber: (value: string) => void
 }
 
 export const useSettingsStore = create<SettingsState>()(
@@ -22,7 +20,6 @@ export const useSettingsStore = create<SettingsState>()(
       darkMode: false,
       notificationsEnabled: true,
       aiPersonality: '',
-      smsPhoneNumber: '',
       subscriptionTier: 'free',
       loaded: false,
 
@@ -33,7 +30,6 @@ export const useSettingsStore = create<SettingsState>()(
             darkMode: settings.dark_mode,
             notificationsEnabled: settings.notifications_enabled,
             aiPersonality: settings.ai_personality || '',
-            smsPhoneNumber: settings.sms_phone_number || '',
             subscriptionTier: settings.subscription_tier || 'free',
             loaded: true,
           })
@@ -62,12 +58,6 @@ export const useSettingsStore = create<SettingsState>()(
           .catch(console.error)
       },
 
-      setSmsPhoneNumber: (value) => {
-        set({ smsPhoneNumber: value })
-        api
-          .updateSettings({ sms_phone_number: value })
-          .catch(console.error)
-      },
     }),
     {
       name: 'spotlight-settings',
@@ -75,7 +65,6 @@ export const useSettingsStore = create<SettingsState>()(
         darkMode: state.darkMode,
         notificationsEnabled: state.notificationsEnabled,
         aiPersonality: state.aiPersonality,
-        smsPhoneNumber: state.smsPhoneNumber,
       }),
     }
   )

@@ -14,7 +14,7 @@ serve(async (req) => {
     if (req.method === "GET") {
       const { data, error } = await adminDb
         .from("user_settings")
-        .select("dark_mode, notifications_enabled, ai_model, ai_personality, sms_phone_number, subscription_tier")
+        .select("dark_mode, notifications_enabled, ai_model, ai_personality, subscription_tier")
         .eq("user_id", auth.userId)
         .single()
 
@@ -24,7 +24,6 @@ serve(async (req) => {
           notifications_enabled: true,
           ai_model: "gpt-4o-mini",
           ai_personality: "",
-          sms_phone_number: "",
           subscription_tier: "free",
         })
       }
@@ -34,7 +33,7 @@ serve(async (req) => {
 
     if (req.method === "POST") {
       const updates = await req.json()
-      const allowed = ["dark_mode", "notifications_enabled", "ai_model", "ai_personality", "sms_phone_number"]
+      const allowed = ["dark_mode", "notifications_enabled", "ai_model", "ai_personality"]
       const filtered: Record<string, unknown> = { updated_at: new Date().toISOString() }
 
       // Validate ai_personality length
@@ -44,17 +43,6 @@ serve(async (req) => {
         }
         if (updates.ai_personality.length > 500) {
           return errorResponse("AI personality too long (max 500 chars)", 400)
-        }
-      }
-
-      // Validate sms_phone_number
-      if ("sms_phone_number" in updates) {
-        if (typeof updates.sms_phone_number !== "string") {
-          return errorResponse("sms_phone_number must be a string", 400)
-        }
-        // Allow empty (to clear) or valid E.164 format
-        if (updates.sms_phone_number && !/^\+[1-9]\d{1,14}$/.test(updates.sms_phone_number)) {
-          return errorResponse("Invalid phone number format. Use +1XXXXXXXXXX", 400)
         }
       }
 
@@ -75,7 +63,7 @@ serve(async (req) => {
       const { data, error } = await adminDb
         .from("user_settings")
         .upsert({ user_id: auth.userId, ...filtered })
-        .select("dark_mode, notifications_enabled, ai_model, ai_personality, sms_phone_number, subscription_tier")
+        .select("dark_mode, notifications_enabled, ai_model, ai_personality, subscription_tier")
         .single()
 
       if (error) {
