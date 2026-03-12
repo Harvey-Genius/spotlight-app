@@ -23,9 +23,15 @@ export function ChatInput() {
   const fetchUsage = useCallback(async () => {
     try {
       const status = await api.getUsageStatus()
+      const userTier = status.tier || 'free'
       setUsed(status.used)
-      setLimit(status.limit)
-      setTier(status.tier || 'free')
+      setTier(userTier)
+      // Pro returns limit=-1 (unlimited), don't store that for free users
+      if (userTier === 'pro') {
+        setLimit(-1)
+      } else {
+        setLimit(status.limit > 0 ? status.limit : 25)
+      }
     } catch {
       // Silently fail — don't block chat
     }
