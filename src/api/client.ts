@@ -175,7 +175,7 @@ export const api = {
       method: 'GET',
       headers,
     })
-    if (!response.ok) return { used: 0, limit: 10, remaining: 10 }
+    if (!response.ok) return { used: 0, limit: 25, remaining: 25 }
     return response.json()
   },
 

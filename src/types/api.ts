@@ -32,6 +32,7 @@ export interface SettingsResponse {
   ai_model: string
   ai_personality: string
   subscription_tier: string
+  selected_categories: string[] | null
 }
 
 export interface NotificationRule {

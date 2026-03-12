@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Spotlight Email Assistant",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "AI-powered email assistant that helps you search, summarize, and manage your Gmail inbox.",
   "permissions": ["identity", "storage", "sidePanel", "tabs", "notifications", "alarms"],
   "oauth2": {

@@ -14,7 +14,7 @@ serve(async (req) => {
     if (req.method === "GET") {
       const { data, error } = await adminDb
         .from("user_settings")
-        .select("dark_mode, notifications_enabled, ai_model, ai_personality, subscription_tier")
+        .select("dark_mode, notifications_enabled, ai_model, ai_personality, subscription_tier, selected_categories")
         .eq("user_id", auth.userId)
         .single()
 
@@ -25,6 +25,7 @@ serve(async (req) => {
           ai_model: "gpt-4o-mini",
           ai_personality: "",
           subscription_tier: "free",
+          selected_categories: ["important", "work", "social"],
         })
       }
 
@@ -33,7 +34,7 @@ serve(async (req) => {
 
     if (req.method === "POST") {
       const updates = await req.json()
-      const allowed = ["dark_mode", "notifications_enabled", "ai_model", "ai_personality"]
+      const allowed = ["dark_mode", "notifications_enabled", "ai_model", "ai_personality", "selected_categories"]
       const filtered: Record<string, unknown> = { updated_at: new Date().toISOString() }
 
       // Validate ai_personality length
@@ -43,6 +44,22 @@ serve(async (req) => {
         }
         if (updates.ai_personality.length > 500) {
           return errorResponse("AI personality too long (max 500 chars)", 400)
+        }
+      }
+
+      // Validate selected_categories
+      if ("selected_categories" in updates) {
+        const validCats = ["important", "work", "social", "promotions", "updates", "finance", "personal"]
+        if (!Array.isArray(updates.selected_categories)) {
+          return errorResponse("selected_categories must be an array", 400)
+        }
+        if (updates.selected_categories.length > 7) {
+          return errorResponse("Too many categories selected", 400)
+        }
+        for (const cat of updates.selected_categories) {
+          if (!validCats.includes(cat)) {
+            return errorResponse(`Invalid category: ${cat}`, 400)
+          }
         }
       }
 
@@ -63,7 +80,7 @@ serve(async (req) => {
       const { data, error } = await adminDb
         .from("user_settings")
         .upsert({ user_id: auth.userId, ...filtered })
-        .select("dark_mode, notifications_enabled, ai_model, ai_personality, subscription_tier")
+        .select("dark_mode, notifications_enabled, ai_model, ai_personality, subscription_tier, selected_categories")
         .single()
 
       if (error) {

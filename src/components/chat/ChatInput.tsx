@@ -14,15 +14,18 @@ export function ChatInput() {
   const messages = useChatStore((s) => s.messages)
 
   const [used, setUsed] = useState(0)
-  const [limit, setLimit] = useState(10)
-  const remaining = limit - used
-  const isLimitReached = remaining <= 0
+  const [limit, setLimit] = useState(25)
+  const [tier, setTier] = useState('free')
+  const isPro = tier === 'pro'
+  const remaining = isPro ? Infinity : limit - used
+  const isLimitReached = !isPro && remaining <= 0
 
   const fetchUsage = useCallback(async () => {
     try {
       const status = await api.getUsageStatus()
       setUsed(status.used)
       setLimit(status.limit)
+      setTier(status.tier || 'free')
     } catch {
       // Silently fail — don't block chat
     }
@@ -81,14 +84,16 @@ export function ChatInput() {
       <div className="flex justify-end mt-1.5">
         <span
           className={`text-[10px] ${
-            remaining <= 5
-              ? remaining <= 0
-                ? 'text-red-400'
-                : 'text-amber-400'
-              : theme.textMuted
+            isPro
+              ? theme.textMuted
+              : remaining <= 5
+                ? remaining <= 0
+                  ? 'text-red-400'
+                  : 'text-amber-400'
+                : theme.textMuted
           }`}
         >
-          {used}/{limit} messages today
+          {isPro ? `${used} messages today` : `${used}/${limit} messages today`}
         </span>
       </div>
     </div>

@@ -3,8 +3,7 @@ import { handleCors, jsonResponse, errorResponse } from "../_shared/cors.ts"
 import { getAuthenticatedUser, isErrorResponse } from "../_shared/auth.ts"
 import { adminDb } from "../_shared/db.ts"
 
-const FREE_LIMIT = 10
-const PRO_LIMIT = 50
+const FREE_LIMIT = 25
 
 serve(async (req) => {
   const corsResponse = handleCors(req)
@@ -22,7 +21,6 @@ serve(async (req) => {
       .single()
 
     const isPro = settings?.subscription_tier === "pro"
-    const limit = isPro ? PRO_LIMIT : FREE_LIMIT
 
     const today = new Date().toISOString().split("T")[0]
 
@@ -36,11 +34,21 @@ serve(async (req) => {
 
     const used = data?.message_count ?? 0
 
+    // Pro users get unlimited, free users get 25/day
+    if (isPro) {
+      return jsonResponse({
+        used,
+        limit: -1,
+        remaining: -1,
+        tier: "pro",
+      })
+    }
+
     return jsonResponse({
       used,
-      limit,
-      remaining: Math.max(0, limit - used),
-      tier: isPro ? "pro" : "free",
+      limit: FREE_LIMIT,
+      remaining: Math.max(0, FREE_LIMIT - used),
+      tier: "free",
     })
   } catch (error) {
     console.error("usage-status error:", error instanceof Error ? error.message : "unknown")

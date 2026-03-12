@@ -13,6 +13,7 @@ import {
   LogOutIcon,
   SparkleIcon,
   CrownIcon,
+  CheckIcon,
 } from '@/icons'
 import { api } from '@/api/client'
 import { useTheme } from '@/hooks/useTheme'
@@ -20,6 +21,18 @@ import { useUiStore } from '@/stores/uiStore'
 import { useSettingsStore } from '@/stores/settingsStore'
 import { useAuthStore } from '@/stores/authStore'
 import { useChatStore } from '@/stores/chatStore'
+
+const ALL_CATEGORIES = [
+  { key: 'important', label: 'Important', color: 'bg-red-500', lightBg: 'bg-red-50 border-red-200', darkBg: 'bg-red-900/30 border-red-500/30' },
+  { key: 'work', label: 'Work/School', color: 'bg-blue-500', lightBg: 'bg-blue-50 border-blue-200', darkBg: 'bg-blue-900/30 border-blue-500/30' },
+  { key: 'social', label: 'Social', color: 'bg-green-500', lightBg: 'bg-green-50 border-green-200', darkBg: 'bg-green-900/30 border-green-500/30' },
+  { key: 'promotions', label: 'Promotions', color: 'bg-yellow-500', lightBg: 'bg-yellow-50 border-yellow-200', darkBg: 'bg-yellow-900/30 border-yellow-500/30' },
+  { key: 'updates', label: 'Updates', color: 'bg-purple-500', lightBg: 'bg-purple-50 border-purple-200', darkBg: 'bg-purple-900/30 border-purple-500/30' },
+  { key: 'finance', label: 'Finance', color: 'bg-orange-500', lightBg: 'bg-orange-50 border-orange-200', darkBg: 'bg-orange-900/30 border-orange-500/30' },
+  { key: 'personal', label: 'Personal', color: 'bg-pink-500', lightBg: 'bg-pink-50 border-pink-200', darkBg: 'bg-pink-900/30 border-pink-500/30' },
+]
+
+const FREE_CATEGORY_LIMIT = 3
 
 const PERSONALITY_PRESETS = [
   { label: 'Default', value: '', desc: 'Balanced and helpful' },
@@ -59,6 +72,8 @@ export function SettingsView() {
   const signOut = useAuthStore((s) => s.signOut)
   const reset = useUiStore((s) => s.reset)
   const subscriptionTier = useSettingsStore((s) => s.subscriptionTier)
+  const selectedCategories = useSettingsStore((s) => s.selectedCategories)
+  const setSelectedCategories = useSettingsStore((s) => s.setSelectedCategories)
   const clearMessages = useChatStore((s) => s.clearMessages)
   const [upgradeLoading, setUpgradeLoading] = useState(false)
   const [showCustom, setShowCustom] = useState(
@@ -339,6 +354,68 @@ export function SettingsView() {
           </div>
         </div>
 
+        {/* Email Categories */}
+        <div>
+          <p
+            className={`text-xs font-medium ${theme.textMuted} uppercase tracking-wider px-2 mb-2`}
+          >
+            Email Categories
+          </p>
+          <div className="px-2">
+            <p className={`text-xs ${theme.textMuted} mb-3`}>
+              {subscriptionTier === 'pro'
+                ? 'All categories enabled with Pro.'
+                : `Choose ${FREE_CATEGORY_LIMIT} categories to label your emails. Upgrade to Pro for all 7.`}
+            </p>
+            <div className="grid grid-cols-2 gap-2">
+              {ALL_CATEGORIES.map((cat) => {
+                const isSelected = selectedCategories.includes(cat.key)
+                const isPro = subscriptionTier === 'pro'
+                const atLimit = !isPro && !isSelected && selectedCategories.length >= FREE_CATEGORY_LIMIT
+
+                return (
+                  <button
+                    key={cat.key}
+                    disabled={isPro || atLimit}
+                    onClick={() => {
+                      if (isPro) return
+                      if (isSelected) {
+                        setSelectedCategories(selectedCategories.filter((c) => c !== cat.key))
+                      } else if (!atLimit) {
+                        setSelectedCategories([...selectedCategories, cat.key])
+                      }
+                    }}
+                    className={`flex items-center gap-2 px-3 py-2 rounded-xl border text-left transition-all ${
+                      isSelected
+                        ? darkMode
+                          ? cat.darkBg
+                          : cat.lightBg
+                        : darkMode
+                          ? 'bg-white/5 border-white/10'
+                          : 'bg-gray-50 border-gray-200'
+                    } ${atLimit ? 'opacity-40 cursor-not-allowed' : isPro ? 'cursor-default' : 'cursor-pointer'}`}
+                  >
+                    <div className={`w-2.5 h-2.5 rounded-full ${cat.color} flex-shrink-0`} />
+                    <span className={`text-xs font-medium flex-1 ${theme.text}`}>
+                      {cat.label}
+                    </span>
+                    {isSelected && (
+                      <div className="text-violet-500">
+                        <CheckIcon />
+                      </div>
+                    )}
+                  </button>
+                )
+              })}
+            </div>
+            {subscriptionTier !== 'pro' && (
+              <p className={`text-[10px] ${theme.textMuted} mt-2`}>
+                {selectedCategories.length}/{FREE_CATEGORY_LIMIT} selected
+              </p>
+            )}
+          </div>
+        </div>
+
         {/* Privacy & Data */}
         <div>
           <p
@@ -388,7 +465,7 @@ export function SettingsView() {
               </div>
               <div className="flex-1 text-left">
                 <p className={`text-sm font-medium ${theme.text}`}>Version</p>
-                <p className={`text-xs ${theme.textMuted}`}>1.0.0</p>
+                <p className={`text-xs ${theme.textMuted}`}>1.1.0</p>
               </div>
             </div>
             <SettingsItem

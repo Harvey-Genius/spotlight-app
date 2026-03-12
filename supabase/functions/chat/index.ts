@@ -30,33 +30,35 @@ serve(async (req) => {
     }
 
     // 0. Check subscription tier and set daily limit
-    const FREE_LIMIT = 10
-    const PRO_LIMIT = 50
+    const FREE_LIMIT = 25
     const { data: tierData } = await adminDb
       .from("user_settings")
-      .select("subscription_tier")
+      .select("subscription_tier, selected_categories")
       .eq("user_id", auth.userId)
       .single()
 
     const isPro = tierData?.subscription_tier === "pro"
-    const DAILY_LIMIT = isPro ? PRO_LIMIT : FREE_LIMIT
     const today = new Date().toISOString().split("T")[0]
 
-    const { data: countResult, error: usageErr } = await adminDb.rpc(
-      "increment_daily_usage",
-      { p_user_id: auth.userId, p_date: today, p_limit: DAILY_LIMIT, p_type: "chat" }
-    )
-
-    if (usageErr) {
-      console.error("Rate limit check failed:", usageErr.message)
-    } else if (countResult !== null && countResult > DAILY_LIMIT) {
-      return errorResponse(
-        isPro
-          ? `Daily limit reached (${PRO_LIMIT} messages). Resets at midnight UTC.`
-          : `Daily limit reached (${FREE_LIMIT} messages). Upgrade to Pro for ${PRO_LIMIT}/day!`,
-        429
+    // Pro users get unlimited messages, free users get 25/day
+    if (!isPro) {
+      const { data: countResult, error: usageErr } = await adminDb.rpc(
+        "increment_daily_usage",
+        { p_user_id: auth.userId, p_date: today, p_limit: FREE_LIMIT, p_type: "chat" }
       )
+
+      if (usageErr) {
+        console.error("Rate limit check failed:", usageErr.message)
+      } else if (countResult !== null && countResult > FREE_LIMIT) {
+        return errorResponse(
+          `Daily limit reached (${FREE_LIMIT} messages). Upgrade to Pro for unlimited messages!`,
+          429
+        )
+      }
     }
+
+    // Get user's selected categories (free: 3 max, pro: all 7)
+    const userSelectedCategories: string[] | null = tierData?.selected_categories ?? null
 
     // 1. Load or create conversation
     let convId = conversation_id
@@ -132,10 +134,11 @@ serve(async (req) => {
       }
 
       // Categorize emails with AI (non-blocking — if it fails, emails display without categories)
+      // Free users only see their 3 selected categories; Pro users see all 7
       let categories: Record<string, string> = {}
       try {
         const emailsToProcess = emails.slice(0, 25)
-        categories = await categorizeEmails(
+        const allCategories = await categorizeEmails(
           emailsToProcess.filter((e) => e.id).map((e) => ({
             id: e.id!,
             from: e.from,
@@ -143,6 +146,17 @@ serve(async (req) => {
             snippet: e.snippet,
           }))
         )
+
+        // Filter categories for free users (only show selected labels)
+        if (!isPro && userSelectedCategories && userSelectedCategories.length > 0) {
+          for (const [emailId, category] of Object.entries(allCategories)) {
+            if (userSelectedCategories.includes(category)) {
+              categories[emailId] = category
+            }
+          }
+        } else {
+          categories = allCategories
+        }
       } catch (catErr) {
         console.error("[Chat] Categorization failed:", catErr instanceof Error ? catErr.message : "unknown")
       }
